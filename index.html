@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Vicmic Indonesia - Dashboard Manajemen Price List & Stok">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Vicmic Indonesia Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ===== LOGIN PAGE ===== -->
+    <div id="login-page">
+        <div class="login-bg"></div>
+        <div class="login-container">
+            <div class="login-card glass-card">
+                <div class="login-logo">V</div>
+                <h1 class="login-title">Vicmic Indonesia</h1>
+                <p class="login-subtitle">Dashboard Management System</p>
+                <div id="google-signin-btn"></div>
+                <div id="login-error" class="login-error"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== APP SHELL ===== -->
+    <div id="app-shell" style="display:none">
+        <!-- Mobile Header -->
+        <header id="mobile-header">
+            <button id="mobile-menu-toggle" class="btn-icon" aria-label="Toggle Menu">
+                <span></span><span></span><span></span>
+            </button>
+            <span class="mobile-title">Vicmic Dashboard</span>
+        </header>
+
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">V</div>
+                <span class="sidebar-brand">Vicmic</span>
+            </div>
+            <div id="user-info" class="user-info">
+                <img id="user-avatar" class="user-avatar" alt="" src="">
+                <div class="user-details">
+                    <span id="user-name" class="user-name"></span>
+                    <span id="user-role-badge" class="user-role-badge"></span>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item admin-only" data-page="dashboard">
+                    <span class="nav-icon">📊</span><span class="nav-text">Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="pricelist">
+                    <span class="nav-icon">📋</span><span class="nav-text">Master Price List</span>
+                </li>
+                <li class="nav-item admin-only" data-page="reports">
+                    <span class="nav-icon">📈</span><span class="nav-text">Laporan</span>
+                </li>
+                <li class="nav-item admin-only" data-page="users">
+                    <span class="nav-icon">👥</span><span class="nav-text">User Management</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn btn-logout">🚪 Logout</button>
+            </div>
+        </nav>
+
+        <!-- Sidebar Overlay (Mobile) -->
+        <div id="sidebar-overlay"></div>
+
+        <!-- Content Area -->
+        <main id="content-area">
+
+            <!-- ========== DASHBOARD PAGE ========== -->
+            <section id="page-dashboard" class="page admin-only">
+                <div class="page-header">
+                    <h1>📊 Dashboard Analisis</h1>
+                    <span id="dashboard-date-label" class="date-label"></span>
+                </div>
+
+                <!-- Upload Section -->
+                <div id="upload-section" class="glass-card">
+                    <div class="card-header"><h2>⬆️ Upload Price List</h2></div>
+                    <div class="card-body upload-body">
+                        <div id="upload-dropzone" class="upload-dropzone">
+                            <span class="dropzone-icon">📁</span>
+                            <p class="dropzone-text">Drag & drop file Excel, atau <strong>klik di sini</strong></p>
+                            <p class="dropzone-hint">.xlsx / .xls</p>
+                            <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
+                        </div>
+                        <div class="upload-options">
+                            <label class="upload-date-label">Tanggal Berlaku:
+                                <input type="date" id="upload-date" class="input-field">
+                            </label>
+                            <button id="btn-upload" class="btn btn-primary" disabled>⬆️ Upload &amp; Proses</button>
+                        </div>
+                        <div id="upload-status"></div>
+                    </div>
+                </div>
+
+                <!-- KPI Grid -->
+                <div id="kpi-grid" class="kpi-grid"></div>
+
+                <!-- Dashboard Widgets Row -->
+                <div class="dashboard-grid">
+                    <div class="glass-card">
+                        <div class="card-header"><h2>🔔 Price Alert Harian</h2></div>
+                        <div class="card-body scrollable" id="price-alert-list">
+                            <div class="empty-state">Belum ada data perbandingan</div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-header"><h2>⚡ Run-Rate &amp; Urgensi Stok</h2></div>
+                        <div class="card-body scrollable" id="stock-urgency-list">
+                            <div class="empty-state">Belum ada data historis</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== PRICE LIST PAGE ========== -->
+            <section id="page-pricelist" class="page">
+                <div class="page-header">
+                    <h1>📋 Master Price List</h1>
+                    <div class="page-header-actions">
+                        <label class="admin-only">Tanggal:
+                            <input type="date" id="pricelist-date-select" class="input-field">
+                        </label>
+                        <span id="pricelist-date-display" class="date-label"></span>
+                        <button id="btn-export" class="btn btn-primary btn-sm">📥 Export to Excel</button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="pricelist-table" class="data-table">
+                        <thead>
+                            <tr id="pricelist-header-row"></tr>
+                            <tr id="pricelist-filter-row"></tr>
+                        </thead>
+                        <tbody id="pricelist-body"></tbody>
+                    </table>
+                </div>
+                <div id="pricelist-empty" class="empty-state" style="display:none">
+                    <span class="empty-icon">📭</span>
+                    <p>Tidak ada data untuk tanggal ini</p>
+                </div>
+            </section>
+
+            <!-- ========== REPORTS PAGE ========== -->
+            <section id="page-reports" class="page admin-only">
+                <div class="page-header">
+                    <h1>📈 Laporan Harian</h1>
+                    <span id="reports-date-label" class="date-label"></span>
+                </div>
+                <div class="report-tabs">
+                    <button class="report-tab active" data-tab="new">🆕 Barang Baru</button>
+                    <button class="report-tab" data-tab="outofstock">🚫 Barang Habis</button>
+                </div>
+                <div id="report-new-items" class="report-content active">
+                    <div class="table-wrapper">
+                        <table class="data-table" id="new-items-table">
+                            <thead><tr></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="report-out-of-stock" class="report-content">
+                    <div class="table-wrapper">
+                        <table class="data-table" id="oos-table">
+                            <thead><tr></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== USER MANAGEMENT PAGE ========== -->
+            <section id="page-users" class="page admin-only">
+                <div class="page-header">
+                    <h1>👥 User Management</h1>
+                </div>
+                <div class="glass-card">
+                    <div class="card-header"><h2>➕ Tambah User Baru</h2></div>
+                    <div class="card-body">
+                        <form id="add-user-form" class="form-row">
+                            <input type="email" id="input-user-email" class="input-field" placeholder="Email Google" required>
+                            <select id="select-user-role" class="input-field">
+                                <option value="sales">Sales</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary">➕ Tambah</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="glass-card mt-1">
+                    <div class="card-header"><h2>📋 Daftar User</h2></div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table id="users-table" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Ditambahkan Oleh</th>
+                                        <th>Tanggal</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===== MODAL ===== -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2 id="modal-title"></h2>
+                <button id="btn-modal-close" class="btn-icon modal-close">&times;</button>
+            </div>
+            <div id="modal-body" class="modal-body"></div>
+            <div id="modal-footer" class="modal-footer"></div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div id="toast-container"></div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
