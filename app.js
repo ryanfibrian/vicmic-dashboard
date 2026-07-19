@@ -807,7 +807,7 @@ const PriceList = {
 
     columns: [
         { key: 'no', label: 'No.', type: 'number' },
-        { key: 'deskripsi', label: 'Deskripsi / Nama Barang', type: 'text' },
+        { key: 'deskripsi', label: 'Deskripsi / Nama Barang', type: 'text', class: 'col-deskripsi' },
         { key: 'distribusi', label: 'Distribusi', type: 'currency' },
         { key: 'serpong', label: 'Serpong', type: 'number', class: 'col-serpong' },
         { key: 'harco', label: 'Harco', type: 'number' },
@@ -856,7 +856,10 @@ const PriceList = {
                 isNew: !prev,
                 prevDistribusi: prev ? prev.distribusi : null,
                 prevHargaOnline: prev ? PriceCalc.hargaOnline(prev.distribusi) : null,
-                prevHargaOffline: prev ? PriceCalc.hargaOffline(prev.distribusi) : null
+                prevHargaOffline: prev ? PriceCalc.hargaOffline(prev.distribusi) : null,
+                prevSerpong: prev ? prev.serpong : null,
+                prevHarco: prev ? prev.harco : null,
+                prevTotal: prev ? prev.total : null
             };
         });
 
@@ -968,25 +971,29 @@ const PriceList = {
                 let val = item[col.key];
                 let displayVal = val;
                 
-                if (col.type === 'currency') {
-                    displayVal = formatCurrency(val);
+                if (col.type === 'currency' || col.type === 'number') {
+                    if (col.type === 'currency') displayVal = formatCurrency(val);
+                    else displayVal = formatNumber(val);
                     
                     let prevKey = col.key === 'distribusi' ? 'prevDistribusi' : 
                                   col.key === 'hargaOnline' ? 'prevHargaOnline' : 
-                                  col.key === 'hargaOffline' ? 'prevHargaOffline' : null;
+                                  col.key === 'hargaOffline' ? 'prevHargaOffline' : 
+                                  col.key === 'serpong' ? 'prevSerpong' : 
+                                  col.key === 'harco' ? 'prevHarco' : 
+                                  col.key === 'total' ? 'prevTotal' : null;
                                   
                     if (prevKey && item[prevKey] !== null) {
                         let prevVal = item[prevKey];
                         if (val > prevVal) {
                             let diff = val - prevVal;
-                            displayVal = `<span style="color: var(--success); font-weight: 600;">${displayVal} <small style="margin-left: 4px;">&#9650; +${formatCurrency(diff)}</small></span>`;
+                            let diffStr = col.type === 'currency' ? formatCurrency(diff) : formatNumber(diff);
+                            displayVal = `<span style="color: var(--success); font-weight: 600;">${displayVal} <small style="margin-left: 4px; font-size: 0.7em;">&#9650; +${diffStr}</small></span>`;
                         } else if (val < prevVal) {
                             let diff = prevVal - val;
-                            displayVal = `<span style="color: var(--danger); font-weight: 600;">${displayVal} <small style="margin-left: 4px;">&#9660; -${formatCurrency(diff)}</small></span>`;
+                            let diffStr = col.type === 'currency' ? formatCurrency(diff) : formatNumber(diff);
+                            displayVal = `<span style="color: var(--danger); font-weight: 600;">${displayVal} <small style="margin-left: 4px; font-size: 0.7em;">&#9660; -${diffStr}</small></span>`;
                         }
                     }
-                } else if (col.type === 'number') {
-                    displayVal = formatNumber(val);
                 }
 
                 if (col.key === 'deskripsi' && item.isNew) {
