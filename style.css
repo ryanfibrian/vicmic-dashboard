@@ -1482,6 +1482,20 @@ body.role-sales .admin-only {
   #app-shell {
     flex-direction: column;
   }
+
+  /* Make Deskripsi column sticky on mobile when scrolling horizontally */
+  .data-table .col-deskripsi {
+    position: sticky;
+    left: 0;
+    background-color: var(--bg-secondary);
+    z-index: 5;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+  }
+  
+  .data-table thead .col-deskripsi {
+    z-index: 11; /* Keep header above row content */
+    background-color: var(--bg-primary); /* Header background */
+  }
   
   #sidebar {
     transform: translateX(-100%);
