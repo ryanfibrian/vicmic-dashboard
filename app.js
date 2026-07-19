@@ -991,9 +991,8 @@ const Dashboard = {
         // Urutkan berdasarkan stok harco paling sedikit (ascending)
         returnHarco.sort((a, b) => (parseFloat(a.harco) || 0) - (parseFloat(b.harco) || 0));
 
-        const renderRow = (item, index) => `
+        const renderRow = (item) => `
             <tr>
-                <td>${index + 1}</td>
                 <td style="text-align: left;" class="col-deskripsi">
                     ${item.deskripsi}
                     <button class="btn btn-sm btn-secondary btn-copy" data-text="${item.deskripsi}" title="Copy Deskripsi" style="padding: 0 4px; margin-left: 5px; font-size: 0.8em; border: none; background: transparent;">📋</button>
@@ -1005,16 +1004,16 @@ const Dashboard = {
         
         const tbodyPull = document.getElementById('pull-serpong-body');
         if (pullSerpong.length === 0) {
-            tbodyPull.innerHTML = '<tr><td colspan="4" style="text-align:center">Tidak ada rekomendasi tarik ke serpong</td></tr>';
+            tbodyPull.innerHTML = '<tr><td colspan="3" style="text-align:center">Tidak ada rekomendasi tarik ke serpong</td></tr>';
         } else {
-            tbodyPull.innerHTML = pullSerpong.map((item, i) => renderRow(item, i)).join('');
+            tbodyPull.innerHTML = pullSerpong.map((item) => renderRow(item)).join('');
         }
         
         const tbodyReturn = document.getElementById('return-harco-body');
         if (returnHarco.length === 0) {
-            tbodyReturn.innerHTML = '<tr><td colspan="4" style="text-align:center">Tidak ada rekomendasi retur ke harco</td></tr>';
+            tbodyReturn.innerHTML = '<tr><td colspan="3" style="text-align:center">Tidak ada rekomendasi retur ke harco</td></tr>';
         } else {
-            tbodyReturn.innerHTML = returnHarco.map((item, i) => renderRow(item, i)).join('');
+            tbodyReturn.innerHTML = returnHarco.map((item) => renderRow(item)).join('');
         }
         
         // Setup copy buttons
