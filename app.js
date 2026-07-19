@@ -1143,17 +1143,14 @@ const PriceList = {
                     const copyText = `${item.deskripsi} ${hargaOnlineFormatted}`.replace(/"/g, '&quot;');
                     const query = encodeURIComponent(item.deskripsi);
                     
-                    displayVal = `<div style="display:flex; justify-content:space-between; align-items:center; min-width: 250px;">
-                        <span style="flex:1; margin-right: 8px;">${descHtml}</span>
-                        <div style="display:flex; gap: 4px;">
-                            <button class="btn-search-desc" data-query="${query}" title="Cari di Google" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.6; padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
-                                🔍
-                            </button>
-                            <button class="btn-copy-desc" data-copy="${copyText}" title="Copy Deskripsi & Harga Online" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.6; padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
-                                📋
-                            </button>
-                        </div>
-                    </div>`;
+                    displayVal = `${descHtml} <span style="white-space: nowrap; margin-left: 4px;">
+                        <button class="btn-search-desc" data-query="${query}" title="Cari di Google" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.6; padding:0 2px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                            🔍
+                        </button>
+                        <button class="btn-copy-desc" data-copy="${copyText}" title="Copy Deskripsi & Harga Online" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.6; padding:0 2px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                            📋
+                        </button>
+                    </span>`;
                 }
 
                 let cls = col.class ? ` class="${col.class}"` : '';
