@@ -1137,7 +1137,7 @@ const PriceList = {
                 // Numeric formats for prices and stock
                 if (R >= 3 && cell.t === 'n' && headerCell) {
                     const h = headerCell.v;
-                    if (h.includes('Harga') || h === 'Total' || h === 'Harco' || h === 'Serpong') {
+                    if (h.includes('Harga') || h === 'Distribusi' || h === 'Total' || h === 'Harco' || h === 'Serpong') {
                         cell.z = '#,##0'; // format number with thousand separator
                     }
                 }
