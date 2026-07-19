@@ -1617,15 +1617,54 @@ const Upload = {
             `).join('');
 
             document.querySelectorAll('.btn-delete-history').forEach(btn => {
+                let countdownInterval = null;
+                let countdownValue = 5;
+                let isConfirming = false;
+                
                 btn.onclick = async (e) => {
                     const dateStr = e.target.dataset.date;
-                    if (confirm(`Yakin ingin menghapus semua data pada tanggal ${formatDate(dateStr)}? Data yang dihapus tidak bisa dikembalikan.`)) {
+                    
+                    if (!isConfirming) {
+                        isConfirming = true;
+                        countdownValue = 5;
+                        e.target.innerText = `Ya (${countdownValue})`;
+                        
+                        // Create cancel button next to it
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.className = 'btn btn-sm btn-secondary';
+                        cancelBtn.innerText = 'Batal';
+                        cancelBtn.style.marginLeft = '5px';
+                        cancelBtn.onclick = (ev) => {
+                            ev.stopPropagation();
+                            clearInterval(countdownInterval);
+                            isConfirming = false;
+                            e.target.innerText = 'Hapus';
+                            cancelBtn.remove();
+                        };
+                        e.target.parentNode.appendChild(cancelBtn);
+
+                        countdownInterval = setInterval(() => {
+                            countdownValue--;
+                            if (countdownValue > 0) {
+                                e.target.innerText = `Ya (${countdownValue})`;
+                            } else {
+                                clearInterval(countdownInterval);
+                                e.target.innerText = `Yakin? Hapus!`;
+                            }
+                        }, 1000);
+                    } else if (countdownValue <= 0) {
+                        isConfirming = false;
+                        // Remove cancel button if exists
+                        if (e.target.nextSibling) {
+                            e.target.nextSibling.remove();
+                        }
+                        
                         try {
                             e.target.disabled = true;
                             e.target.innerText = 'Menghapus...';
                             await DB.deleteData(dateStr);
                             showToast(`Data tanggal ${formatDate(dateStr)} berhasil dihapus`, 'success');
-                            await this.renderHistory();
+                            await Upload.renderHistory();
                             await Dashboard.render();
                         } catch (err) {
                             showToast('Gagal menghapus data: ' + err.message, 'error');
