@@ -1588,7 +1588,8 @@ const Upload = {
     selectedFile: null,
 
     async render() {
-        document.getElementById('upload-date').value = getEffectiveDate();
+        const tzOffset = new Date().getTimezoneOffset() * 60000;
+        document.getElementById('upload-date').value = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
         await this.renderHistory();
     },
 
@@ -1684,8 +1685,9 @@ const Upload = {
         const fileInput = document.getElementById('file-input');
         const btnUpload = document.getElementById('btn-upload');
         const dateInput = document.getElementById('upload-date');
-
-        dateInput.value = getEffectiveDate();
+        
+        const tzOffset = new Date().getTimezoneOffset() * 60000;
+        dateInput.value = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
 
         dropzone.onclick = () => fileInput.click();
 
