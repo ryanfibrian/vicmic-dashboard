@@ -1329,9 +1329,6 @@ select.input-field {
 /* ==========================================================================
    24. Utility Classes
    ========================================================================== */
-.admin-only {
-  display: initial;
-}
 
 body.role-sales .admin-only {
   display: none !important;
