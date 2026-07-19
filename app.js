@@ -7,7 +7,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 1. CONFIG & CONSTANTS
 const CONFIG = {
-    GOOGLE_CLIENT_ID: '330235446046-407adjbbot9v4cblg4anu5gp231i3rk6.apps.googleusercontent.com',
+    GOOGLE_CLIENT_ID: '330235446046-t1omv0pvrkusl8k5dqnd37jhu1h62j2s.apps.googleusercontent.com',
     STORAGE_KEYS: {
         USERS: 'vicmic_users',
         DATA_PREFIX: 'vicmic_data_'
