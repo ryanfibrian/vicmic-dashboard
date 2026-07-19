@@ -640,12 +640,13 @@ body {
 }
 
 .data-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  /* sticky moved to th */
 }
 
 .data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   background-color: var(--bg-secondary);
   padding: 0.75rem 1rem;
   text-align: left;
@@ -1493,7 +1494,7 @@ body.role-sales .admin-only {
   }
   
   .data-table thead .col-deskripsi {
-    z-index: 11; /* Keep header above row content */
+    z-index: 21; /* Keep header above row content */
     background-color: var(--bg-primary); /* Header background */
   }
   
