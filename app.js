@@ -1056,7 +1056,7 @@ const Reports = {
         const prevData = prevDataObj ? prevDataObj.data : [];
 
         this.renderNewItems(data, prevData);
-        this.renderOutOfStock(data);
+        this.renderOutOfStock(data, prevData);
 
         // Setup tabs
         document.querySelectorAll('.report-tab').forEach(tab => {
@@ -1078,59 +1078,44 @@ const Reports = {
         const tbody = document.querySelector('#new-items-table tbody');
 
         document.querySelector('#new-items-table thead tr').innerHTML = `
-            <th>No.</th>
-            <th>Deskripsi</th>
-            <th>Distribusi</th>
-            <th>Serpong</th>
-            <th>Harco</th>
-            <th>Total</th>
+            <th style="width: 50px;">No.</th>
+            <th>Nama Barang (Baru)</th>
         `;
 
         if (newItems.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Tidak ada barang baru hari ini</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center">Tidak ada barang baru hari ini</td></tr>';
             return;
         }
 
         tbody.innerHTML = newItems.map((item, i) => `
             <tr>
                 <td>${i + 1}</td>
-                <td>${item.deskripsi}</td>
-                <td>${formatCurrency(item.distribusi)}</td>
-                <td>${formatNumber(item.serpong)}</td>
-                <td>${formatNumber(item.harco)}</td>
-                <td>${formatNumber(item.total)}</td>
+                <td><span class="badge-new-blink">BARU</span> ${item.deskripsi}</td>
             </tr>
         `).join('');
     },
 
-    renderOutOfStock(data) {
-        const oosItems = data.filter(p => p.total === 0 || p.serpong === 0);
+    renderOutOfStock(data, prevData) {
+        const currSet = new Set(data.map(p => p.deskripsi.toLowerCase()));
+        const oosItems = prevData.filter(p => !currSet.has(p.deskripsi.toLowerCase()));
 
         const tbody = document.querySelector('#oos-table tbody');
         document.querySelector('#oos-table thead tr').innerHTML = `
-            <th>No.</th>
-            <th>Deskripsi</th>
-            <th>Total</th>
-            <th>Serpong</th>
-            <th>Harco</th>
+            <th style="width: 50px;">No.</th>
+            <th>Nama Barang (Habis / Hilang)</th>
         `;
 
         if (oosItems.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Tidak ada barang kosong</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center">Tidak ada barang yang habis / hilang hari ini</td></tr>';
             return;
         }
 
-        tbody.innerHTML = oosItems.map((item, i) => {
-            let rowClass = item.total === 0 ? 'row-danger' : (item.serpong === 0 ? 'row-warning' : '');
-            return `
-            <tr class="${rowClass}">
+        tbody.innerHTML = oosItems.map((item, i) => `
+            <tr class="row-danger">
                 <td>${i + 1}</td>
-                <td>${item.deskripsi}</td>
-                <td>${formatNumber(item.total)}</td>
-                <td>${formatNumber(item.serpong)}</td>
-                <td>${formatNumber(item.harco)}</td>
+                <td style="color: var(--danger); font-weight: 500;">${item.deskripsi}</td>
             </tr>
-        `}).join('');
+        `).join('');
     }
 };
 
