@@ -824,29 +824,40 @@ const PriceList = {
             dateSelect.value = targetDate;
         }
 
-        document.getElementById('pricelist-date-display').textContent = formatDate(targetDate);
-
         dateSelect.onchange = () => {
             this.render();
         };
 
         let rawData = await DB.getData(targetDate);
-        let prevDataObj = await DB.getPreviousData(targetDate);
-        let prevDataMap = new Map();
-        if (prevDataObj && prevDataObj.data) {
-            prevDataObj.data.forEach(p => prevDataMap.set(p.deskripsi.toLowerCase(), p));
-        }
+        let actualDateStr = targetDate;
+        let isLatestFallback = false;
 
         if (!rawData) {
             // Fallback: cari data terbaru yang tersedia
             const latest = await DB.getLatestData();
             if (latest) {
                 rawData = latest.data;
-                document.getElementById('pricelist-date-display').textContent = formatDate(latest.date) + ' (terbaru)';
+                actualDateStr = latest.date;
+                isLatestFallback = true;
             } else {
                 rawData = [];
             }
         }
+
+        let prevDataObj = await DB.getPreviousData(actualDateStr);
+        let prevDataMap = new Map();
+        if (prevDataObj && prevDataObj.data) {
+            prevDataObj.data.forEach(p => prevDataMap.set(p.deskripsi.toLowerCase(), p));
+        }
+
+        let prevDateText = prevDataObj ? formatDate(prevDataObj.date) : 'Tidak ada';
+        let currentDateText = formatDate(actualDateStr) + (isLatestFallback ? ' (Terbaru)' : '');
+        
+        document.getElementById('pricelist-date-display').innerHTML = `
+            <strong>Menampilkan:</strong> <span style="color: var(--accent);">${currentDateText}</span>
+            <span style="margin: 0 10px; color: var(--border-color);">|</span>
+            <small style="color: var(--text-secondary);"><strong>Dibandingkan:</strong> ${prevDateText}</small>
+        `;
         this.data = rawData.map(p => {
             const prev = prevDataMap.get(p.deskripsi.toLowerCase());
             return {
