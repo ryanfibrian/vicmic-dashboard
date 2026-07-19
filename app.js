@@ -3,7 +3,7 @@
 // ============================================
 const SUPABASE_URL = 'https://dpnndfgeyuqblpbfzlii.supabase.co';     // ← GANTI!
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwbm5kZmdleXVxYmxwYmZ6bGlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MzMwNzQsImV4cCI6MjEwMDAwOTA3NH0.2qCER7lIRBsz3_JMVhKK4L9HQe4R_NVjsiwGo4uwOXY'; // ← GANTI!
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 1. CONFIG & CONSTANTS
 const CONFIG = {
@@ -105,7 +105,7 @@ function hideModal() {
 const DB = {
     // ---- USER MANAGEMENT ----
     async getUsers() {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('allowed_users')
             .select('*')
             .order('created_at', { ascending: true });
@@ -120,7 +120,7 @@ const DB = {
     },
 
     async addUser(email, role, addedBy) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('allowed_users')
             .insert({ email: email.toLowerCase(), role, added_by: addedBy });
         if (error) {
@@ -130,7 +130,7 @@ const DB = {
     },
 
     async removeUser(email) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('allowed_users')
             .delete()
             .eq('email', email.toLowerCase());
@@ -138,7 +138,7 @@ const DB = {
     },
 
     async findUser(email) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('allowed_users')
             .select('*')
             .eq('email', email.toLowerCase())
@@ -154,7 +154,7 @@ const DB = {
     },
 
     async setAsSuperAdmin(email) {
-        await supabase
+        await supabaseClient
             .from('allowed_users')
             .update({ is_super_admin: true })
             .eq('email', email.toLowerCase());
@@ -163,7 +163,7 @@ const DB = {
     // ---- PRICE DATA ----
     async saveData(dateStr, products) {
         // Hapus data lama untuk tanggal ini (re-upload)
-        await supabase
+        await supabaseClient
             .from('price_data')
             .delete()
             .eq('date', dateStr);
@@ -183,13 +183,13 @@ const DB = {
                 harco: p.harco,
                 total: p.total
             }));
-            const { error } = await supabase.from('price_data').insert(rows);
+            const { error } = await supabaseClient.from('price_data').insert(rows);
             if (error) { console.error('saveData error:', error); return; }
         }
     },
 
     async getData(dateStr) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('price_data')
             .select('deskripsi, distribusi, serpong, harco, total')
             .eq('date', dateStr)
@@ -200,12 +200,12 @@ const DB = {
 
     async getAllDates() {
         // Query distinct dates, sorted newest first
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .rpc('get_distinct_dates');
 
         if (error) {
             // Fallback: query directly (kurang efisien tapi tetap jalan)
-            const { data: fallback } = await supabase
+            const { data: fallback } = await supabaseClient
                 .from('price_data')
                 .select('date')
                 .order('date', { ascending: false });
