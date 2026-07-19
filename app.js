@@ -195,29 +195,47 @@ const DB = {
         for (const chunk of chunks) {
             const rows = chunk.map(p => ({
                 date: dateStr,
+                sku: p.sku,
+                pn: p.pn,
+                type: p.type,
                 deskripsi: p.deskripsi,
                 distribusi: p.distribusi,
                 serpong: p.serpong,
                 harco: p.harco,
-                total: p.total
+                total: p.total,
+                srp: p.srp,
+                promo_sellout: p.promo_sellout
             }));
             const { error } = await supabaseClient.from('price_data').insert(rows);
-            if (error) { console.error('saveData error:', error); return; }
+            if (error) { 
+                console.error('saveData error:', error);
+                throw new Error(`Database error: ${error.message}. Pastikan Anda sudah menambahkan kolom sku, pn, type, srp, dan promo_sellout di Supabase!`);
+            }
         }
     },
 
     async getAvailableDates() {
         const { data, error } = await supabaseClient
-            .from('vicmic_pricelist')
-            .select('date')
-            .order('date', { ascending: false });
-        if (error) { console.error(error); return []; }
+            .rpc('get_distinct_dates');
+            
+        if (error || !data) {
+            // Fallback if RPC fails
+            const { data: fallback } = await supabaseClient
+                .from('price_data')
+                .select('date')
+                .order('date', { ascending: false });
+            if (fallback) {
+                const uniqueDates = [...new Set(fallback.map(d => d.date))];
+                return uniqueDates;
+            }
+            return [];
+        }
         return data.map(d => d.date);
     },
 
     async deleteData(dateStr) {
         const { error } = await supabaseClient
-            .from('vicmic_pricelist')
+            .from('price_data')
             .delete()
             .eq('date', dateStr);
         if (error) throw error;
@@ -226,7 +244,7 @@ const DB = {
     async getData(dateStr) {
         const { data, error } = await supabaseClient
             .from('price_data')
-            .select('deskripsi, distribusi, serpong, harco, total')
+            .select('sku, pn, type, deskripsi, distribusi, serpong, harco, total, srp, promo_sellout')
             .eq('date', dateStr)
             .order('id', { ascending: true });
         if (error || !data || data.length === 0) return null;
