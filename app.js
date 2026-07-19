@@ -1218,7 +1218,7 @@ const PriceList = {
         document.getElementById('pricelist-date-display').innerHTML = `
             <strong>Menampilkan:</strong> <span style="color: var(--accent);">${currentDateText}</span>
             <span style="margin: 0 10px; color: var(--border-color);">|</span>
-            <small style="color: var(--text-secondary);"><strong>Dibandingkan:</strong> ${prevDateText}</small>
+            <span style="color: var(--text-secondary);"><strong>Dibandingkan:</strong> ${prevDateText}</span>
         `;
         this.data = rawData.map(p => {
             const prev = prevDataMap.get(p.deskripsi.toLowerCase());
