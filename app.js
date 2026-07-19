@@ -1302,10 +1302,11 @@ const Reports = {
         document.querySelector('#new-items-table thead tr').innerHTML = `
             <th style="width: 50px;">No.</th>
             <th>Nama Barang (Baru)</th>
+            <th style="width: 100px; text-align: right;">Stok Total</th>
         `;
 
         if (newItems.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center">Tidak ada barang baru hari ini</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Tidak ada barang baru hari ini</td></tr>';
             return;
         }
 
@@ -1313,6 +1314,7 @@ const Reports = {
             <tr>
                 <td>${i + 1}</td>
                 <td><span class="badge-new-blink">BARU</span> ${item.deskripsi}</td>
+                <td style="text-align: right; font-weight: 600;">${item.total || 0}</td>
             </tr>
         `).join('');
     },
