@@ -384,9 +384,12 @@ const Auth = {
         if (this.currentUser.role === 'sales') {
             document.body.classList.add('role-sales');
             document.getElementById('btn-toggle-distribusi').style.display = 'inline-block';
+            PriceList.distribusiVisible = false;
+            document.getElementById('btn-toggle-distribusi').innerHTML = '👁️ Show Distribusi';
         } else {
             document.body.classList.remove('role-sales');
             document.getElementById('btn-toggle-distribusi').style.display = 'none';
+            PriceList.distribusiVisible = true;
         }
 
         Router.init();
