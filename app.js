@@ -868,7 +868,7 @@ const PriceList = {
             th.style.cursor = 'pointer';
 
             if (this.sortColumn === col.key) {
-                th.textContent += this.sortDirection === 'asc' ? ' ↑' : ' ↓';
+                th.innerHTML += this.sortDirection === 'asc' ? ' &uarr;' : ' &darr;';
             }
 
             th.onclick = () => {
