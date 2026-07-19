@@ -1068,21 +1068,100 @@ const PriceList = {
             return;
         }
 
-        const exportData = this.filteredData.map(item => {
+        const dateStr = document.getElementById('pricelist-date-select').value;
+        const exportData = this.filteredData.map((item, index) => {
             const row = {};
             this.columns.forEach(col => {
                 if (col.adminOnly && !Auth.isAdmin()) return;
                 if (!this.distribusiVisible && col.key === 'distribusi') return;
-                row[col.label] = item[col.key];
+                
+                let val = item[col.key];
+                if (col.key === 'no') val = index + 1; // Recalculate No. based on filter
+                row[col.label] = val;
             });
             return row;
         });
 
-        const ws = XLSX.utils.json_to_sheet(exportData);
+        // 1. Convert to worksheet, starting at row 3 (origin A3)
+        const ws = XLSX.utils.json_to_sheet(exportData, { origin: "A3" });
+
+        // 2. Add Title at A1
+        const titleText = `MASTER DATA PRICELIST - ${formatDate(dateStr)}`;
+        XLSX.utils.sheet_add_aoa(ws, [[titleText]], { origin: "A1" });
+
+        // Calculate number of visible columns
+        const visibleColsCount = Object.keys(exportData[0] || {}).length;
+
+        // 3. Merge title cells across all visible columns
+        if (!ws['!merges']) ws['!merges'] = [];
+        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: visibleColsCount - 1 } });
+
+        // 4. Formatting cells
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        
+        let maxDescWidth = 25; // default minimum width
+
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                const cell = ws[cellRef];
+                if (!cell) continue;
+
+                // Title row styling
+                if (R === 0) {
+                    cell.s = {
+                        font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+                        fill: { fgColor: { rgb: "1a2238" } },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+                }
+
+                // Header row styling (row 3 is index 2)
+                if (R === 2) {
+                    cell.s = {
+                        font: { bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { fgColor: { rgb: "2a3754" } },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+                }
+
+                const headerCell = ws[XLSX.utils.encode_cell({ r: 2, c: C })];
+                
+                // Calculate max width for Description
+                if (headerCell && headerCell.v === 'Deskripsi / Nama Barang' && R >= 3) {
+                    if (cell.v && String(cell.v).length > maxDescWidth) {
+                        maxDescWidth = String(cell.v).length;
+                    }
+                }
+
+                // Numeric formats for prices and stock
+                if (R >= 3 && cell.t === 'n' && headerCell) {
+                    const h = headerCell.v;
+                    if (h.includes('Harga') || h === 'Total' || h === 'Harco' || h === 'Serpong') {
+                        cell.z = '#,##0'; // format number with thousand separator
+                    }
+                }
+            }
+        }
+
+        // 5. Adjust column widths
+        ws['!cols'] = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const headerCell = ws[XLSX.utils.encode_cell({ r: 2, c: C })];
+            if (headerCell && headerCell.v === 'No.') {
+                ws['!cols'].push({ wch: 5 });
+            } else if (headerCell && headerCell.v === 'Deskripsi / Nama Barang') {
+                ws['!cols'].push({ wch: Math.min(maxDescWidth + 2, 120) }); // cap at 120
+            } else if (headerCell && (headerCell.v.includes('Harga') || headerCell.v === 'Distribusi')) {
+                ws['!cols'].push({ wch: 15 });
+            } else {
+                ws['!cols'].push({ wch: 10 }); // stocks
+            }
+        }
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "PriceList");
 
-        const dateStr = document.getElementById('pricelist-date-select').value;
         XLSX.writeFile(wb, `Vicmic_PriceList_${dateStr}.xlsx`);
     }
 };
