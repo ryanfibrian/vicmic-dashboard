@@ -1588,7 +1588,7 @@ const Reports = {
 
         document.querySelector('#new-items-table thead tr').innerHTML = `
             <th style="width: 50px;">No.</th>
-            <th>Nama Barang (Baru)</th>
+            <th style="white-space: normal; text-align: left; min-width: 200px;">Nama Barang (Baru)</th>
             <th style="width: 100px; text-align: right;">Stok Total</th>
         `;
 
@@ -1600,7 +1600,7 @@ const Reports = {
         tbody.innerHTML = newItems.map((item, i) => `
             <tr>
                 <td>${i + 1}</td>
-                <td><span class="badge-new-blink">BARU</span> ${item.deskripsi}</td>
+                <td style="white-space: normal; text-align: left;"><span class="badge-new-blink">BARU</span> ${item.deskripsi}</td>
                 <td style="text-align: right; font-weight: 600;">${item.total || 0}</td>
             </tr>
         `).join('');
@@ -1613,7 +1613,7 @@ const Reports = {
         const tbody = document.querySelector('#oos-table tbody');
         document.querySelector('#oos-table thead tr').innerHTML = `
             <th style="width: 50px;">No.</th>
-            <th>Nama Barang (Habis / Hilang)</th>
+            <th style="white-space: normal; text-align: left; min-width: 200px;">Nama Barang (Habis / Hilang)</th>
         `;
 
         if (oosItems.length === 0) {
@@ -1624,7 +1624,7 @@ const Reports = {
         tbody.innerHTML = oosItems.map((item, i) => `
             <tr class="row-danger">
                 <td>${i + 1}</td>
-                <td style="color: var(--danger); font-weight: 500;">${item.deskripsi}</td>
+                <td style="color: var(--danger); font-weight: 500; white-space: normal; text-align: left;">${item.deskripsi}</td>
             </tr>
         `).join('');
     }
