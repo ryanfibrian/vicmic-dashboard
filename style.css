@@ -751,7 +751,7 @@ body {
 
 .data-table th.col-serpong {
   color: var(--accent);
-  background-color: rgba(16, 185, 129, 0.1);
+  background-color: #1d3b36;
 }
 
 /* ==========================================================================

@@ -806,12 +806,12 @@ const PriceList = {
     filters: {},
 
     columns: [
-        { key: 'no', label: 'No.', type: 'number' },
+        { key: 'no', label: 'No.', type: 'number', width: '50px' },
         { key: 'deskripsi', label: 'Deskripsi / Nama Barang', type: 'text', class: 'col-deskripsi' },
         { key: 'distribusi', label: 'Distribusi', type: 'currency' },
-        { key: 'total', label: 'Total', type: 'number' },
-        { key: 'harco', label: 'Harco', type: 'number' },
-        { key: 'serpong', label: 'Serpong', type: 'number', class: 'col-serpong' },
+        { key: 'total', label: 'Total', type: 'number', width: '80px', class: 'col-stock' },
+        { key: 'harco', label: 'Harco', type: 'number', width: '80px', class: 'col-stock' },
+        { key: 'serpong', label: 'Serpong', type: 'number', class: 'col-serpong', width: '90px' },
         { key: 'hargaOnline', label: 'Harga Online', type: 'currency' },
         { key: 'hargaOffline', label: 'Harga Offline', type: 'currency' }
     ],
@@ -893,6 +893,10 @@ const PriceList = {
             th.textContent = col.label;
             if (col.class) th.classList.add(col.class);
             th.style.cursor = 'pointer';
+            if (col.width) {
+                th.style.width = col.width;
+                th.style.minWidth = col.width;
+            }
 
             if (this.sortColumn === col.key) {
                 th.innerHTML += this.sortDirection === 'asc' ? ' &uarr;' : ' &darr;';
@@ -913,6 +917,10 @@ const PriceList = {
             // Filter cell
             const filterTh = document.createElement('th');
             if (col.class) filterTh.classList.add(col.class);
+            if (col.width) {
+                filterTh.style.width = col.width;
+                filterTh.style.minWidth = col.width;
+            }
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'input-field column-filter';
