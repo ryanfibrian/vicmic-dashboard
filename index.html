@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,9 +12,11 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- ===== LOGIN PAGE ===== -->
     <div id="login-page">
@@ -86,7 +89,9 @@
 
                 <!-- Upload Section -->
                 <div id="upload-section" class="glass-card">
-                    <div class="card-header"><h2>⬆️ Upload Price List</h2></div>
+                    <div class="card-header">
+                        <h2>⬆️ Upload Price List</h2>
+                    </div>
                     <div class="card-body upload-body">
                         <div id="upload-dropzone" class="upload-dropzone">
                             <span class="dropzone-icon">📁</span>
@@ -110,13 +115,17 @@
                 <!-- Dashboard Widgets Row -->
                 <div class="dashboard-grid">
                     <div class="glass-card">
-                        <div class="card-header"><h2>🔔 Price Alert Harian</h2></div>
+                        <div class="card-header">
+                            <h2>🔔 Price Alert Harian</h2>
+                        </div>
                         <div class="card-body scrollable" id="price-alert-list">
                             <div class="empty-state">Belum ada data perbandingan</div>
                         </div>
                     </div>
                     <div class="glass-card">
-                        <div class="card-header"><h2>⚡ Run-Rate &amp; Urgensi Stok</h2></div>
+                        <div class="card-header">
+                            <h2>⚡ Run-Rate &amp; Urgensi Stok</h2>
+                        </div>
                         <div class="card-body scrollable" id="stock-urgency-list">
                             <div class="empty-state">Belum ada data historis</div>
                         </div>
@@ -164,7 +173,9 @@
                 <div id="report-new-items" class="report-content active">
                     <div class="table-wrapper">
                         <table class="data-table" id="new-items-table">
-                            <thead><tr></tr></thead>
+                            <thead>
+                                <tr></tr>
+                            </thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -172,7 +183,9 @@
                 <div id="report-out-of-stock" class="report-content">
                     <div class="table-wrapper">
                         <table class="data-table" id="oos-table">
-                            <thead><tr></tr></thead>
+                            <thead>
+                                <tr></tr>
+                            </thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -185,10 +198,13 @@
                     <h1>👥 User Management</h1>
                 </div>
                 <div class="glass-card">
-                    <div class="card-header"><h2>➕ Tambah User Baru</h2></div>
+                    <div class="card-header">
+                        <h2>➕ Tambah User Baru</h2>
+                    </div>
                     <div class="card-body">
                         <form id="add-user-form" class="form-row">
-                            <input type="email" id="input-user-email" class="input-field" placeholder="Email Google" required>
+                            <input type="email" id="input-user-email" class="input-field" placeholder="Email Google"
+                                required>
                             <select id="select-user-role" class="input-field">
                                 <option value="sales">Sales</option>
                                 <option value="admin">Admin</option>
@@ -198,7 +214,9 @@
                     </div>
                 </div>
                 <div class="glass-card mt-1">
-                    <div class="card-header"><h2>📋 Daftar User</h2></div>
+                    <div class="card-header">
+                        <h2>📋 Daftar User</h2>
+                    </div>
                     <div class="card-body">
                         <div class="table-wrapper">
                             <table id="users-table" class="data-table">
@@ -239,6 +257,8 @@
     <!-- ===== SCRIPTS ===== -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

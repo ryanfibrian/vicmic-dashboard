@@ -1,3 +1,10 @@
+// ============================================
+// SUPABASE INITIALIZATION
+// ============================================
+const SUPABASE_URL = 'https://dpnndfgeyuqblpbfzlii.supabase.co';     // ← GANTI!
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwbm5kZmdleXVxYmxwYmZ6bGlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MzMwNzQsImV4cCI6MjEwMDAwOTA3NH0.2qCER7lIRBsz3_JMVhKK4L9HQe4R_NVjsiwGo4uwOXY'; // ← GANTI!
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // 1. CONFIG & CONSTANTS
 const CONFIG = {
     GOOGLE_CLIENT_ID: '330235446046-407adjbbot9v4cblg4anu5gp231i3rk6.apps.googleusercontent.com',
@@ -94,44 +101,133 @@ function hideModal() {
     document.getElementById('modal-overlay').classList.remove('show');
 }
 
-// 4. DATABASE MODULE (DB object)
+// 4. DATABASE MODULE (Supabase Version)
 const DB = {
-    getUsers() { return JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.USERS) || '[]'); },
-    saveUsers(users) { localStorage.setItem(CONFIG.STORAGE_KEYS.USERS, JSON.stringify(users)); },
-    addUser(email, role, addedBy) {
-        const users = this.getUsers();
-        users.push({ email: email.toLowerCase(), role, addedBy, addedAt: dateToKey(new Date()) });
-        this.saveUsers(users);
+    // ---- USER MANAGEMENT ----
+    async getUsers() {
+        const { data, error } = await supabase
+            .from('allowed_users')
+            .select('*')
+            .order('created_at', { ascending: true });
+        if (error) { console.error('getUsers error:', error); return []; }
+        return data.map(u => ({
+            email: u.email,
+            role: u.role,
+            isSuperAdmin: u.is_super_admin,
+            addedBy: u.added_by,
+            addedAt: u.created_at?.split('T')[0] || ''
+        }));
     },
-    removeUser(email) {
-        const users = this.getUsers().filter(u => u.email !== email.toLowerCase());
-        this.saveUsers(users);
-    },
-    findUser(email) { return this.getUsers().find(u => u.email === email.toLowerCase()); },
 
-    saveData(dateStr, products) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.DATA_PREFIX + dateStr, JSON.stringify(products));
+    async addUser(email, role, addedBy) {
+        const { error } = await supabase
+            .from('allowed_users')
+            .insert({ email: email.toLowerCase(), role, added_by: addedBy });
+        if (error) {
+            console.error('addUser error:', error);
+            if (error.code === '23505') showToast('Email sudah terdaftar', 'warning');
+        }
     },
-    getData(dateStr) {
-        const d = localStorage.getItem(CONFIG.STORAGE_KEYS.DATA_PREFIX + dateStr);
-        return d ? JSON.parse(d) : null;
+
+    async removeUser(email) {
+        const { error } = await supabase
+            .from('allowed_users')
+            .delete()
+            .eq('email', email.toLowerCase());
+        if (error) console.error('removeUser error:', error);
     },
-    getAllDates() {
-        return Object.keys(localStorage)
-            .filter(k => k.startsWith(CONFIG.STORAGE_KEYS.DATA_PREFIX))
-            .map(k => k.replace(CONFIG.STORAGE_KEYS.DATA_PREFIX, ''))
-            .sort((a, b) => b.localeCompare(a)); // newest first
+
+    async findUser(email) {
+        const { data, error } = await supabase
+            .from('allowed_users')
+            .select('*')
+            .eq('email', email.toLowerCase())
+            .maybeSingle();
+        if (error || !data) return null;
+        return {
+            email: data.email,
+            role: data.role,
+            isSuperAdmin: data.is_super_admin,
+            addedBy: data.added_by,
+            addedAt: data.created_at?.split('T')[0] || ''
+        };
     },
-    getLatestData() {
-        const dates = this.getAllDates();
+
+    async setAsSuperAdmin(email) {
+        await supabase
+            .from('allowed_users')
+            .update({ is_super_admin: true })
+            .eq('email', email.toLowerCase());
+    },
+
+    // ---- PRICE DATA ----
+    async saveData(dateStr, products) {
+        // Hapus data lama untuk tanggal ini (re-upload)
+        await supabase
+            .from('price_data')
+            .delete()
+            .eq('date', dateStr);
+
+        // Insert batch (chunk per 500 rows untuk menghindari limit)
+        const chunks = [];
+        for (let i = 0; i < products.length; i += 500) {
+            chunks.push(products.slice(i, i + 500));
+        }
+
+        for (const chunk of chunks) {
+            const rows = chunk.map(p => ({
+                date: dateStr,
+                deskripsi: p.deskripsi,
+                distribusi: p.distribusi,
+                serpong: p.serpong,
+                harco: p.harco,
+                total: p.total
+            }));
+            const { error } = await supabase.from('price_data').insert(rows);
+            if (error) { console.error('saveData error:', error); return; }
+        }
+    },
+
+    async getData(dateStr) {
+        const { data, error } = await supabase
+            .from('price_data')
+            .select('deskripsi, distribusi, serpong, harco, total')
+            .eq('date', dateStr)
+            .order('id', { ascending: true });
+        if (error || !data || data.length === 0) return null;
+        return data.map((p, i) => ({ no: i + 1, ...p }));
+    },
+
+    async getAllDates() {
+        // Query distinct dates, sorted newest first
+        const { data, error } = await supabase
+            .rpc('get_distinct_dates');
+
+        if (error) {
+            // Fallback: query directly (kurang efisien tapi tetap jalan)
+            const { data: fallback } = await supabase
+                .from('price_data')
+                .select('date')
+                .order('date', { ascending: false });
+            if (!fallback) return [];
+            return [...new Set(fallback.map(r => r.date))];
+        }
+        return data.map(r => r.date);
+    },
+
+    async getLatestData() {
+        const dates = await this.getAllDates();
         if (dates.length === 0) return null;
-        return { date: dates[0], data: this.getData(dates[0]) };
+        const data = await this.getData(dates[0]);
+        return data ? { date: dates[0], data } : null;
     },
-    getPreviousData(currentDateStr) {
-        // Get the most recent data BEFORE currentDateStr (Sundays are already excluded since we never store Sunday data)
-        const dates = this.getAllDates().filter(d => d < currentDateStr);
-        if (dates.length === 0) return null;
-        return { date: dates[0], data: this.getData(dates[0]) };
+
+    async getPreviousData(currentDateStr) {
+        const dates = await this.getAllDates();
+        const prev = dates.filter(d => d < currentDateStr);
+        if (prev.length === 0) return null;
+        const data = await this.getData(prev[0]);
+        return data ? { date: prev[0], data } : null;
     }
 };
 
@@ -139,12 +235,12 @@ const DB = {
 const Auth = {
     currentUser: null,
 
-    init() {
+    async init() {
         // Check existing session in sessionStorage
         const saved = sessionStorage.getItem('vicmic_session');
         if (saved) {
             this.currentUser = JSON.parse(saved);
-            if (this.verifyUser(this.currentUser.email)) {
+            if (await this.verifyUser(this.currentUser.email)) {
                 this.onLoginSuccess();
                 return;
             }
@@ -172,16 +268,42 @@ const Auth = {
 
     initGoogleSignIn() {
         try {
+            // Cek apakah Client ID masih placeholder
+            if (!CONFIG.GOOGLE_CLIENT_ID || CONFIG.GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+                console.warn('Google Client ID belum dikonfigurasi');
+                this.setupDemoLogin();
+                return;
+            }
+
             google.accounts.id.initialize({
                 client_id: CONFIG.GOOGLE_CLIENT_ID,
-                callback: (response) => this.handleCredentialResponse(response)
+                callback: (response) => this.handleCredentialResponse(response),
+                auto_select: false
             });
             google.accounts.id.renderButton(
                 document.getElementById('google-signin-btn'),
                 { theme: 'filled_blue', size: 'large', width: 300, text: 'signin_with', shape: 'rectangular' }
             );
+
+            // Tambahkan tombol Demo Mode di bawah Google button
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.style.cssText = 'margin-top: 1.5rem; text-align: center;';
+            fallbackDiv.innerHTML = `
+                <p style="color: var(--text-muted); font-size: 0.78rem; margin-bottom: 0.5rem;">
+                    Google Sign-In bermasalah?
+                </p>
+                <button id="btn-switch-demo" class="btn btn-secondary btn-sm"
+                    style="font-size: 0.8rem;">
+                    Gunakan Mode Demo
+                </button>
+            `;
+            document.getElementById('google-signin-btn').parentElement.appendChild(fallbackDiv);
+            document.getElementById('btn-switch-demo').addEventListener('click', () => {
+                fallbackDiv.remove();
+                this.setupDemoLogin();
+            });
         } catch (e) {
-            console.warn('Google Sign-In init failed, using demo mode:', e);
+            console.warn('Google Sign-In init failed:', e);
             this.setupDemoLogin();
         }
     },
@@ -199,11 +321,11 @@ const Auth = {
                 <button id="btn-demo-login" class="btn btn-primary" style="width: 100%;">Login</button>
             </div>
         `;
-        document.getElementById('btn-demo-login').addEventListener('click', () => {
+        document.getElementById('btn-demo-login').addEventListener('click', async () => {
             const email = document.getElementById('demo-email').value.trim();
             const name = document.getElementById('demo-name').value.trim() || email.split('@')[0];
             if (!email) { showToast('Masukkan email!', 'error'); return; }
-            this.processLogin(email, name, '');
+            await this.processLogin(email, name, '');
         });
         // Also support Enter key
         ['demo-email', 'demo-name'].forEach(id => {
@@ -213,25 +335,23 @@ const Auth = {
         });
     },
 
-    handleCredentialResponse(response) {
+    async handleCredentialResponse(response) {
         const payload = decodeJwt(response.credential);
-        this.processLogin(payload.email, payload.name, payload.picture);
+        await this.processLogin(payload.email, payload.name, payload.picture);
     },
 
-    processLogin(email, name, picture) {
+    async processLogin(email, name, picture) {
         email = email.toLowerCase();
-        const users = DB.getUsers();
+        const users = await DB.getUsers();
 
         // First user EVER = Super Admin
         if (users.length === 0) {
-            DB.addUser(email, 'admin', 'system');
-            const u = DB.getUsers();
-            u[0].isSuperAdmin = true;
-            DB.saveUsers(u);
+            await DB.addUser(email, 'admin', 'system');
+            await DB.setAsSuperAdmin(email);
             showToast(`${name}, Anda terdaftar sebagai Super Admin!`, 'success');
         }
 
-        const user = DB.findUser(email);
+        const user = await DB.findUser(email);
         if (!user) {
             document.getElementById('login-error').textContent = 'Email Anda belum terdaftar. Hubungi Admin.';
             showToast('Akses ditolak: Email belum di-whitelist', 'error');
@@ -270,7 +390,7 @@ const Auth = {
         Router.init();
     },
 
-    verifyUser(email) { return !!DB.findUser(email.toLowerCase()); },
+    async verifyUser(email) { return !!(await DB.findUser(email.toLowerCase())); },
     isAdmin() { return this.currentUser && this.currentUser.role === 'admin'; },
     isSales() { return this.currentUser && this.currentUser.role === 'sales'; },
 
@@ -339,12 +459,12 @@ const Router = {
         }
     },
 
-    renderPage(page) {
+    async renderPage(page) {
         switch (page) {
-            case 'dashboard': Dashboard.render(); break;
-            case 'pricelist': PriceList.render(); break;
-            case 'reports': Reports.render(); break;
-            case 'users': UserManagement.render(); break;
+            case 'dashboard': await Dashboard.render(); break;
+            case 'pricelist': await PriceList.render(); break;
+            case 'reports': await Reports.render(); break;
+            case 'users': await UserManagement.render(); break;
         }
     }
 };
@@ -477,20 +597,20 @@ const PriceCalc = {
 
 // 9. DASHBOARD MODULE
 const Dashboard = {
-    render() {
+    async render() {
         const currentDateStr = document.getElementById('upload-date').value || getEffectiveDate();
         document.getElementById('upload-date').value = currentDateStr;
         document.getElementById('dashboard-date-label').textContent = formatDate(currentDateStr);
 
-        let dataObj = DB.getData(currentDateStr);
-        let prevDataObj = DB.getPreviousData(currentDateStr);
+        let dataObj = await DB.getData(currentDateStr);
+        let prevDataObj = await DB.getPreviousData(currentDateStr);
 
         const data = dataObj || [];
         const prevData = prevDataObj ? prevDataObj.data : [];
 
         this.renderKPIs(data, prevData);
         this.renderPriceAlerts(data, prevData);
-        this.renderStockUrgency(data, currentDateStr);
+        await this.renderStockUrgency(data, currentDateStr);
     },
 
     renderKPIs(data, prevData) {
@@ -586,15 +706,19 @@ const Dashboard = {
             }).join('');
     },
 
-    renderStockUrgency(data, currentDateStr) {
+    async renderStockUrgency(data, currentDateStr) {
         const container = document.getElementById('stock-urgency-list');
-        const dates = DB.getAllDates().filter(d => d <= currentDateStr).slice(0, 7);
+        const allDates = await DB.getAllDates();
+        const dates = allDates.filter(d => d <= currentDateStr).slice(0, 7);
         if (dates.length < 2) {
             container.innerHTML = '<div class="empty-state">Belum ada data historis yang cukup</div>';
             return;
         }
 
-        const histories = dates.map(d => DB.getData(d));
+        const histories = [];
+        for (const d of dates) {
+            histories.push(await DB.getData(d));
+        }
         const urgencies = [];
 
         data.forEach(p => {
@@ -691,7 +815,7 @@ const PriceList = {
         { key: 'hargaOffline', label: 'Harga Offline', type: 'currency' }
     ],
 
-    render() {
+    async render() {
         const dateSelect = document.getElementById('pricelist-date-select');
         let targetDate = dateSelect.value;
         if (!targetDate) {
@@ -705,10 +829,10 @@ const PriceList = {
             this.render();
         };
 
-        let rawData = DB.getData(targetDate);
+        let rawData = await DB.getData(targetDate);
         if (!rawData) {
             // Fallback: cari data terbaru yang tersedia
-            const latest = DB.getLatestData();
+            const latest = await DB.getLatestData();
             if (latest) {
                 rawData = latest.data;
                 document.getElementById('pricelist-date-display').textContent = formatDate(latest.date) + ' (terbaru)';
@@ -866,12 +990,12 @@ const PriceList = {
 
 // 11. REPORTS MODULE
 const Reports = {
-    render() {
+    async render() {
         const dateStr = getEffectiveDate();
         document.getElementById('reports-date-label').textContent = formatDate(dateStr);
 
-        const dataObj = DB.getData(dateStr);
-        const prevDataObj = DB.getPreviousData(dateStr);
+        const dataObj = await DB.getData(dateStr);
+        const prevDataObj = await DB.getPreviousData(dateStr);
 
         const data = dataObj || [];
         const prevData = prevDataObj ? prevDataObj.data : [];
@@ -957,31 +1081,31 @@ const Reports = {
 
 // 12. USER MANAGEMENT MODULE
 const UserManagement = {
-    render() {
-        this.renderTable();
+    async render() {
+        await this.renderTable();
         const form = document.getElementById('add-user-form');
-        form.onsubmit = (e) => {
+        form.onsubmit = async (e) => {
             e.preventDefault();
             const email = document.getElementById('input-user-email').value.trim();
             const role = document.getElementById('select-user-role').value;
 
             if (!email) return;
 
-            if (DB.findUser(email)) {
+            if (await DB.findUser(email)) {
                 showToast('Email sudah terdaftar', 'error');
                 return;
             }
 
-            DB.addUser(email, role, Auth.currentUser.email);
+            await DB.addUser(email, role, Auth.currentUser.email);
             showToast('User berhasil ditambahkan', 'success');
             document.getElementById('input-user-email').value = '';
-            this.renderTable();
+            await this.renderTable();
         };
     },
 
-    renderTable() {
+    async renderTable() {
         const tbody = document.getElementById('users-table-body');
-        const users = DB.getUsers();
+        const users = await DB.getUsers();
 
         tbody.innerHTML = users.map(u => `
             <tr>
@@ -996,12 +1120,12 @@ const UserManagement = {
         `).join('');
 
         document.querySelectorAll('.btn-delete-user').forEach(btn => {
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 const email = btn.dataset.email;
                 if (confirm(`Hapus user ${email}?`)) {
-                    DB.removeUser(email);
+                    await DB.removeUser(email);
                     showToast('User dihapus', 'success');
-                    this.renderTable();
+                    await this.renderTable();
                 }
             };
         });
@@ -1077,14 +1201,14 @@ const Upload = {
             document.getElementById('upload-status').innerHTML = 'Memproses...';
 
             const products = await ExcelParser.parse(this.selectedFile);
-            DB.saveData(dateStr, products);
+            await DB.saveData(dateStr, products);
 
             showToast(`Berhasil menyimpan ${products.length} produk`, 'success');
             document.getElementById('upload-status').innerHTML = '';
             this.selectedFile = null;
             document.getElementById('file-input').value = '';
 
-            Dashboard.render();
+            await Dashboard.render();
 
         } catch (err) {
             showToast(err, 'error');
