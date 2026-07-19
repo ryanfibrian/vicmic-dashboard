@@ -950,11 +950,16 @@ const PriceList = {
     applyFiltersAndSort() {
         this.filteredData = this.data.filter(item => {
             for (const key in this.filters) {
-                const filterVal = this.filters[key].toLowerCase();
+                const filterVal = this.filters[key].toLowerCase().trim();
                 if (!filterVal) continue;
 
                 const itemVal = String(item[key] || '').toLowerCase();
-                if (!itemVal.includes(filterVal)) return false;
+                const filterParts = filterVal.split(/\s+/);
+                
+                // Cek apakah semua kata ada di itemVal
+                for (const part of filterParts) {
+                    if (!itemVal.includes(part)) return false;
+                }
             }
             return true;
         });
@@ -980,9 +985,15 @@ const PriceList = {
         const tableWrapper = document.querySelector('#page-pricelist .table-wrapper');
 
         if (this.filteredData.length === 0) {
-            tbody.innerHTML = '';
-            tableWrapper.style.display = 'none';
-            emptyState.style.display = 'flex';
+            let colCount = this.columns.filter(c => {
+                if (c.adminOnly && !Auth.isAdmin()) return false;
+                if (!this.distribusiVisible && c.key === 'distribusi') return false;
+                return true;
+            }).length;
+
+            tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align: center; padding: 2rem; color: var(--text-muted);">Tidak ada data yang cocok dengan pencarian / filter</td></tr>`;
+            tableWrapper.style.display = 'block'; // Make sure table is still visible!
+            emptyState.style.display = 'none';
             return;
         }
 
