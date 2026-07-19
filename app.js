@@ -344,8 +344,8 @@ const Auth = {
     currentUser: null,
 
     async init() {
-        // Check existing session in sessionStorage
-        const saved = sessionStorage.getItem('vicmic_session');
+        // Check existing session in localStorage
+        const saved = localStorage.getItem('vicmic_session');
         if (saved) {
             this.currentUser = JSON.parse(saved);
             if (await this.verifyUser(this.currentUser.email)) {
@@ -467,7 +467,7 @@ const Auth = {
         }
 
         this.currentUser = { email, name, picture, role: user.role, isSuperAdmin: user.isSuperAdmin || false };
-        sessionStorage.setItem('vicmic_session', JSON.stringify(this.currentUser));
+        localStorage.setItem('vicmic_session', JSON.stringify(this.currentUser));
         await this.onLoginSuccess();
     },
 
@@ -510,7 +510,7 @@ const Auth = {
 
     logout() {
         this.currentUser = null;
-        sessionStorage.removeItem('vicmic_session');
+        localStorage.removeItem('vicmic_session');
         document.body.classList.remove('role-sales');
         document.getElementById('app-shell').style.display = 'none';
         document.getElementById('login-page').style.display = '';
