@@ -944,25 +944,25 @@ const Dashboard = {
         const renderRow = (item, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td style="text-align: left;">${item.deskripsi}</td>
+                <td style="text-align: left;" class="col-deskripsi">
+                    ${item.deskripsi}
+                    <button class="btn btn-sm btn-secondary btn-copy" data-text="${item.deskripsi}" title="Copy Deskripsi" style="padding: 0 4px; margin-left: 5px; font-size: 0.8em; border: none; background: transparent;">📋</button>
+                </td>
                 <td style="text-align: right;">${item.serpong || 0}</td>
                 <td style="text-align: right;">${item.harco || 0}</td>
-                <td style="text-align: center;">
-                    <button class="btn btn-sm btn-secondary btn-copy" data-text="${item.deskripsi}" title="Copy Deskripsi" style="padding: 2px 6px;">📋</button>
-                </td>
             </tr>
         `;
         
         const tbodyPull = document.getElementById('pull-serpong-body');
         if (pullSerpong.length === 0) {
-            tbodyPull.innerHTML = '<tr><td colspan="5" style="text-align:center">Tidak ada rekomendasi tarik ke serpong</td></tr>';
+            tbodyPull.innerHTML = '<tr><td colspan="4" style="text-align:center">Tidak ada rekomendasi tarik ke serpong</td></tr>';
         } else {
             tbodyPull.innerHTML = pullSerpong.map((item, i) => renderRow(item, i)).join('');
         }
         
         const tbodyReturn = document.getElementById('return-harco-body');
         if (returnHarco.length === 0) {
-            tbodyReturn.innerHTML = '<tr><td colspan="5" style="text-align:center">Tidak ada rekomendasi retur ke harco</td></tr>';
+            tbodyReturn.innerHTML = '<tr><td colspan="4" style="text-align:center">Tidak ada rekomendasi retur ke harco</td></tr>';
         } else {
             tbodyReturn.innerHTML = returnHarco.map((item, i) => renderRow(item, i)).join('');
         }
