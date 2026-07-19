@@ -1035,7 +1035,7 @@ const Dashboard = {
                     <div class="alert-product">${badge}${a.deskripsi}</div>
                     <div class="alert-prices">
                         <span class="alert-old" style="text-decoration:none; opacity:0.6; font-weight:normal; font-size:0.85em;">${a.old}</span>
-                        <span class="alert-arrow ${isUp ? 'stock-up' : 'stock-down'}">${isUp ? '⬆️' : '⬇️'}</span>
+                        <span class="alert-arrow ${isUp ? 'stock-up' : 'stock-down'}">${isUp ? '▲' : '▼'}</span>
                         <span class="alert-new" style="font-weight:bold;">${a.new}</span>
                     </div>
                     <div class="alert-diff ${isUp ? 'stock-up' : 'stock-down'}">
