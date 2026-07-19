@@ -124,6 +124,35 @@ const DB = {
         }
         return data;
     },
+
+    async cleanupOldData(daysLimit = 60) {
+        try {
+            const dates = await this.getAvailableDates();
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const toDelete = dates.filter(d => {
+                const diffTime = today - new Date(d); // only old dates
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) > daysLimit;
+            });
+            
+            for (const d of toDelete) {
+                await this.deleteData(d);
+                // Also clean up metadata
+                const meta = JSON.parse(localStorage.getItem('upload_metadata') || '{}');
+                if (meta[d]) {
+                    delete meta[d];
+                    localStorage.setItem('upload_metadata', JSON.stringify(meta));
+                }
+            }
+            if (toDelete.length > 0) {
+                console.log(`Auto-cleaned ${toDelete.length} old history records.`);
+            }
+        } catch(err) {
+            console.error('Failed to cleanup old data', err);
+        }
+    },
+
     async saveSetting(key, value) {
         const { data, error } = await supabaseClient
             .from('app_settings')
@@ -1710,24 +1739,83 @@ const Upload = {
         const tbody = document.getElementById('upload-history-body');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Memuat riwayat...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Memuat riwayat...</td></tr>';
         
         try {
             const dates = await DB.getAvailableDates();
             if (dates.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-muted);">Belum ada data yang diupload</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Belum ada data yang diupload</td></tr>';
                 return;
             }
 
+            const meta = JSON.parse(localStorage.getItem('upload_metadata') || '{}');
             tbody.innerHTML = dates.map(date => `
                 <tr>
+                    <td style="text-align: center;"><input type="checkbox" class="chk-delete-row" value="${date}"></td>
                     <td style="font-weight: 500;">${formatDate(date)}</td>
+                    <td style="color: var(--text-muted); font-size: 0.9em;">${meta[date] ? meta[date].filename : '-'}</td>
                     <td><span class="badge badge-success" style="background: var(--success); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em;">Tersedia</span></td>
                     <td>
                         <button class="btn btn-sm btn-danger btn-delete-history" data-date="${date}">Hapus</button>
                     </td>
                 </tr>
             `).join('');
+
+            // Checkbox logic
+            const chkSelectAll = document.getElementById('chk-select-all');
+            const chkRows = document.querySelectorAll('.chk-delete-row');
+            const btnBulkDelete = document.getElementById('btn-bulk-delete');
+            
+            const updateBulkButton = () => {
+                const anyChecked = Array.from(chkRows).some(chk => chk.checked);
+                if (btnBulkDelete) btnBulkDelete.style.display = anyChecked ? 'inline-block' : 'none';
+            };
+            
+            if (chkSelectAll) {
+                chkSelectAll.checked = false;
+                chkSelectAll.onchange = (e) => {
+                    chkRows.forEach(chk => chk.checked = e.target.checked);
+                    updateBulkButton();
+                };
+            }
+            
+            chkRows.forEach(chk => {
+                chk.onchange = () => {
+                    if (!chk.checked && chkSelectAll) chkSelectAll.checked = false;
+                    updateBulkButton();
+                };
+            });
+            
+            if (btnBulkDelete) {
+                btnBulkDelete.onclick = async () => {
+                    const selectedDates = Array.from(chkRows).filter(chk => chk.checked).map(chk => chk.value);
+                    if (selectedDates.length === 0) return;
+                    
+                    if (confirm(`Yakin ingin menghapus ${selectedDates.length} riwayat data terpilih secara permanen?`)) {
+                        btnBulkDelete.disabled = true;
+                        btnBulkDelete.innerText = 'Menghapus...';
+                        try {
+                            for (const date of selectedDates) {
+                                await DB.deleteData(date);
+                                const m = JSON.parse(localStorage.getItem('upload_metadata') || '{}');
+                                if (m[date]) {
+                                    delete m[date];
+                                    localStorage.setItem('upload_metadata', JSON.stringify(m));
+                                }
+                            }
+                            showToast(`${selectedDates.length} data terpilih berhasil dihapus`, 'success');
+                            await Upload.renderHistory();
+                            await Dashboard.render();
+                        } catch(err) {
+                            showToast('Gagal menghapus sebagian data', 'error');
+                        } finally {
+                            btnBulkDelete.disabled = false;
+                            btnBulkDelete.innerText = '🗑️ Hapus Terpilih';
+                            btnBulkDelete.style.display = 'none';
+                        }
+                    }
+                };
+            }
 
             document.querySelectorAll('.btn-delete-history').forEach(btn => {
                 let countdownInterval = null;
@@ -1860,6 +1948,10 @@ const Upload = {
 
             const products = await ExcelParser.parse(this.selectedFile);
             await DB.saveData(dateStr, products);
+            
+            const meta = JSON.parse(localStorage.getItem('upload_metadata') || '{}');
+            meta[dateStr] = { filename: this.selectedFile.name };
+            localStorage.setItem('upload_metadata', JSON.stringify(meta));
 
             showToast(`Berhasil menyimpan ${products.length} produk`, 'success');
             document.getElementById('upload-status').innerHTML = '';
@@ -1879,7 +1971,10 @@ const Upload = {
 };
 
 // 14. APP INITIALIZATION
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Cleanup old data on load (> 60 days)
+    await DB.cleanupOldData(60);
+
     // Register Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
