@@ -957,9 +957,9 @@ const PriceList = {
                 if (!filterVal) continue;
 
                 const itemVal = String(item[key] || '').toLowerCase();
-                const filterParts = filterVal.split(/\s+/);
+                const filterParts = filterVal.split(',').map(p => p.trim()).filter(p => p !== '');
                 
-                // Cek apakah semua kata ada di itemVal
+                // Cek apakah semua frasa ada di itemVal
                 for (const part of filterParts) {
                     if (!itemVal.includes(part)) return false;
                 }
