@@ -827,6 +827,7 @@ const Dashboard = {
         this.renderKPIs(data, prevData);
         this.renderPriceAlerts(data, prevData);
         this.renderRecommendations(data);
+        await this.renderBrandChart(currentDateStr);
     },
 
     renderKPIs(data, prevData) {
@@ -941,6 +942,9 @@ const Dashboard = {
             }
         });
         
+        // Urutkan berdasarkan stok harco terbanyak
+        pullSerpong.sort((a, b) => (parseFloat(b.harco) || 0) - (parseFloat(a.harco) || 0));
+        
         const renderRow = (item, index) => `
             <tr>
                 <td>${index + 1}</td>
@@ -978,6 +982,111 @@ const Dashboard = {
                     showToast('Gagal menyalin', 'error');
                 }
             };
+        });
+    },
+
+    async renderBrandChart(currentDateStr) {
+        const allDates = await DB.getAllDates();
+        // Fetch up to 7 days, reverse so oldest is first
+        const dates = allDates.filter(d => d <= currentDateStr).slice(0, 7).reverse(); 
+        
+        if (dates.length === 0) return;
+
+        const histories = [];
+        for (const d of dates) {
+            histories.push(await DB.getData(d));
+        }
+
+        // Aggregate by brand
+        const brandsData = {};
+        const regex = /(?:NOTEBOOK|PC)\s+([A-Za-z0-9]+)/i;
+
+        histories.forEach((dayData, dayIndex) => {
+            dayData.forEach(item => {
+                const match = item.deskripsi.match(regex);
+                if (match && match[1]) {
+                    const brand = match[1].toUpperCase();
+                    if (!brandsData[brand]) {
+                        brandsData[brand] = new Array(dates.length).fill(0);
+                    }
+                    brandsData[brand][dayIndex] += (parseFloat(item.total) || 0);
+                }
+            });
+        });
+
+        const brandNames = Object.keys(brandsData);
+        
+        const colors = [
+            '#4F46E5', '#10B981', '#F59E0B', '#EF4444', 
+            '#8B5CF6', '#EC4899', '#06B6D4', '#F97316',
+            '#14B8A6', '#84CC16', '#6366F1', '#3B82F6',
+            '#EAB308', '#0EA5E9', '#D946EF', '#64748B'
+        ];
+
+        const datasets = brandNames.map((brand, i) => ({
+            label: brand,
+            data: brandsData[brand],
+            borderColor: colors[i % colors.length],
+            backgroundColor: colors[i % colors.length],
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }));
+
+        const ctx = document.getElementById('brandChart');
+        if (!ctx) return;
+        
+        if (window.brandChartInstance) {
+            window.brandChartInstance.destroy();
+        }
+
+        window.brandChartInstance = new Chart(ctx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: dates.map(d => formatDate(d)),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#e2e8f0',
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            boxWidth: 12,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
         });
     }
 };

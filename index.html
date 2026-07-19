@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=35">
+    <link rel="stylesheet" href="style.css?v=36">
 </head>
 
 <body>
@@ -141,6 +141,16 @@
 
                 <!-- KPI Grid -->
                 <div id="kpi-grid" class="kpi-grid"></div>
+
+                <!-- Chart Section -->
+                <div class="glass-card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h2>📈 Tren Total Stok per Brand (7 Hari Terakhir)</h2>
+                    </div>
+                    <div class="card-body" style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="brandChart"></canvas>
+                    </div>
+                </div>
 
                 <!-- Dashboard Widgets Row -->
                 <div class="dashboard-grid">
@@ -358,7 +368,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=35"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js?v=36"></script>
 </body>
 
 </html>
