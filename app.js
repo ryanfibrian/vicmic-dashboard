@@ -809,9 +809,9 @@ const PriceList = {
         { key: 'no', label: 'No.', type: 'number' },
         { key: 'deskripsi', label: 'Deskripsi / Nama Barang', type: 'text', class: 'col-deskripsi' },
         { key: 'distribusi', label: 'Distribusi', type: 'currency' },
-        { key: 'serpong', label: 'Serpong', type: 'number', class: 'col-serpong' },
-        { key: 'harco', label: 'Harco', type: 'number' },
         { key: 'total', label: 'Total', type: 'number' },
+        { key: 'harco', label: 'Harco', type: 'number' },
+        { key: 'serpong', label: 'Serpong', type: 'number', class: 'col-serpong' },
         { key: 'hargaOnline', label: 'Harga Online', type: 'currency' },
         { key: 'hargaOffline', label: 'Harga Offline', type: 'currency' }
     ],
