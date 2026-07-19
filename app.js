@@ -465,6 +465,7 @@ const Router = {
             case 'pricelist': await PriceList.render(); break;
             case 'reports': await Reports.render(); break;
             case 'users': await UserManagement.render(); break;
+            case 'upload': await Upload.render(); break;
         }
     }
 };
@@ -1135,6 +1136,10 @@ const UserManagement = {
 // 13. UPLOAD MODULE
 const Upload = {
     selectedFile: null,
+
+    async render() {
+        document.getElementById('upload-date').value = getEffectiveDate();
+    },
 
     init() {
         const dropzone = document.getElementById('upload-dropzone');

@@ -7,21 +7,21 @@
    1. Reset & Base & Variables
    ========================================================================== */
 :root {
-  --bg-primary: #0a0e27;
-  --bg-secondary: #131836;
-  --bg-surface: #1a1f45;
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-surface: #334155;
   --glass-bg: rgba(255, 255, 255, 0.04);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --accent: #00d4ff;
-  --success: #00e676;
-  --warning: #ffab00;
-  --danger: #ff5252;
-  --text-primary: #e8eaf6;
-  --text-secondary: #8f94b8;
-  --text-muted: #5c6093;
-  --serpong-bg: rgba(0, 212, 255, 0.06);
-  --serpong-border: rgba(0, 212, 255, 0.15);
+  --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --accent: #34d399;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --serpong-bg: rgba(16, 185, 129, 0.06);
+  --serpong-border: rgba(16, 185, 129, 0.15);
   --border-color: rgba(255, 255, 255, 0.06);
   --radius: 12px;
   --radius-sm: 8px;
@@ -88,7 +88,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(-45deg, #0a0e27, #131836, #1a1f45, #2a0845);
+  background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #064e3b);
   background-size: 400% 400%;
   animation: gradientShift 15s ease infinite;
   z-index: 0;
@@ -116,26 +116,11 @@ body {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-.login-logo {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 1.5rem;
-  background: var(--primary-gradient);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: #ffffff;
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-}
-
 .login-title {
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0 0 0.5rem;
-  background: linear-gradient(to right, #fff, #a5b4fc);
+  background: linear-gradient(to right, #fff, #38bdf8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -253,7 +238,7 @@ body {
   font-weight: 800;
   font-size: 1.2rem;
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 10px rgba(56, 189, 248, 0.3);
 }
 
 .sidebar-brand {
@@ -760,7 +745,7 @@ body {
 
 .data-table th.col-serpong {
   color: var(--accent);
-  background-color: rgba(0, 212, 255, 0.1);
+  background-color: rgba(16, 185, 129, 0.1);
 }
 
 /* ==========================================================================

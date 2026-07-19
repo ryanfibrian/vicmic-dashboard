@@ -23,8 +23,8 @@
         <div class="login-bg"></div>
         <div class="login-container">
             <div class="login-card glass-card">
-                <div class="login-logo">V</div>
-                <h1 class="login-title">Vicmic Indonesia</h1>
+                <img class="login-logo-img" src="logo.png" alt="Vicmic Logo" style="width: 220px; height: auto; margin: 0 auto 1.5rem; display: block;">
+                <h1 class="login-title" style="display: none;">Vicmic Indonesia</h1>
                 <p class="login-subtitle">Dashboard Management System</p>
                 <div id="google-signin-btn"></div>
                 <div id="login-error" class="login-error"></div>
@@ -44,9 +44,8 @@
 
         <!-- Sidebar -->
         <nav id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">V</div>
-                <span class="sidebar-brand">Vicmic</span>
+            <div class="sidebar-header" style="justify-content: center;">
+                <img class="sidebar-logo-img" src="logo.png" alt="Vicmic Logo" style="width: 140px; height: auto; margin-top: 0.5rem;">
             </div>
             <div id="user-info" class="user-info">
                 <img id="user-avatar" class="user-avatar" alt="" src="">
@@ -68,6 +67,9 @@
                 <li class="nav-item admin-only" data-page="users">
                     <span class="nav-icon">👥</span><span class="nav-text">User Management</span>
                 </li>
+                <li class="nav-item admin-only" data-page="upload">
+                    <span class="nav-icon">⬆️</span><span class="nav-text">Upload Data</span>
+                </li>
             </ul>
             <div class="sidebar-footer">
                 <button id="btn-logout" class="btn btn-logout">🚪 Logout</button>
@@ -80,18 +82,13 @@
         <!-- Content Area -->
         <main id="content-area">
 
-            <!-- ========== DASHBOARD PAGE ========== -->
-            <section id="page-dashboard" class="page admin-only">
+            <!-- ========== UPLOAD PAGE ========== -->
+            <section id="page-upload" class="page admin-only">
                 <div class="page-header">
-                    <h1>📊 Dashboard Analisis</h1>
-                    <span id="dashboard-date-label" class="date-label"></span>
+                    <h1>⬆️ Upload Data Price List</h1>
                 </div>
 
-                <!-- Upload Section -->
-                <div id="upload-section" class="glass-card">
-                    <div class="card-header">
-                        <h2>⬆️ Upload Price List</h2>
-                    </div>
+                <div id="upload-section" class="glass-card mb-1">
                     <div class="card-body upload-body">
                         <div id="upload-dropzone" class="upload-dropzone">
                             <span class="dropzone-icon">📁</span>
@@ -107,6 +104,14 @@
                         </div>
                         <div id="upload-status"></div>
                     </div>
+                </div>
+            </section>
+
+            <!-- ========== DASHBOARD PAGE ========== -->
+            <section id="page-dashboard" class="page admin-only">
+                <div class="page-header">
+                    <h1>📊 Dashboard Analisis</h1>
+                    <span id="dashboard-date-label" class="date-label"></span>
                 </div>
 
                 <!-- KPI Grid -->
