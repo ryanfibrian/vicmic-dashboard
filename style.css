@@ -640,13 +640,12 @@ body {
 }
 
 .data-table thead {
-  /* sticky moved to th */
-}
-
-.data-table th {
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.data-table th {
   background-color: var(--bg-secondary);
   padding: 0.75rem 1rem;
   text-align: left;
