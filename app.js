@@ -1073,7 +1073,31 @@ const PriceList = {
         tableWrapper.style.display = 'block';
         emptyState.style.display = 'none';
 
-        tbody.innerHTML = this.filteredData.map(item => {
+        tbody.innerHTML = this.renderTable(this.filteredData);
+        
+        tbody.onclick = (e) => {
+            const btnCopy = e.target.closest('.btn-copy-desc');
+            if (btnCopy) {
+                const text = btnCopy.dataset.copy;
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Berhasil dicopy!', 'success');
+                }).catch(err => {
+                    showToast('Gagal copy: ' + err, 'error');
+                });
+                return;
+            }
+            
+            const btnSearch = e.target.closest('.btn-search-desc');
+            if (btnSearch) {
+                const query = btnSearch.dataset.query;
+                window.open(`https://www.google.com/search?q=${query}`, '_blank');
+                return;
+            }
+        };
+    },
+
+    renderTable(data) {
+        return data.map(item => {
             let rowHtml = '<tr>';
             this.columns.forEach(col => {
                 if (col.hidden) return;
@@ -1108,8 +1132,28 @@ const PriceList = {
                     }
                 }
 
-                if (col.key === 'deskripsi' && item.isNew) {
-                    displayVal = `<span class="badge-new-blink">BARU</span> ` + displayVal;
+                if (col.key === 'deskripsi') {
+                    let descHtml = displayVal;
+                    if (item.isNew) {
+                        descHtml = `<span class="badge-new-blink">BARU</span> ` + descHtml;
+                    }
+                    
+                    const hargaOnlineFormatted = formatCurrency(item.hargaOnline || 0);
+                    // Gunakan double quotes escaped untuk mencegah masalah attribute parsing
+                    const copyText = `${item.deskripsi} ${hargaOnlineFormatted}`.replace(/"/g, '&quot;');
+                    const query = encodeURIComponent(item.deskripsi);
+                    
+                    displayVal = `<div style="display:flex; justify-content:space-between; align-items:center; min-width: 250px;">
+                        <span style="flex:1; margin-right: 8px;">${descHtml}</span>
+                        <div style="display:flex; gap: 4px;">
+                            <button class="btn-search-desc" data-query="${query}" title="Cari di Google" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.6; padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                                🔍
+                            </button>
+                            <button class="btn-copy-desc" data-copy="${copyText}" title="Copy Deskripsi & Harga Online" style="background:none; border:none; cursor:pointer; font-size:1.1rem; opacity:0.6; padding:4px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                                📋
+                            </button>
+                        </div>
+                    </div>`;
                 }
 
                 let cls = col.class ? ` class="${col.class}"` : '';
