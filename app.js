@@ -959,6 +959,9 @@ const Dashboard = {
         // Urutkan berdasarkan stok harco terbanyak
         pullSerpong.sort((a, b) => (parseFloat(b.harco) || 0) - (parseFloat(a.harco) || 0));
         
+        // Urutkan berdasarkan stok harco paling sedikit (ascending)
+        returnHarco.sort((a, b) => (parseFloat(a.harco) || 0) - (parseFloat(b.harco) || 0));
+
         const renderRow = (item, index) => `
             <tr>
                 <td>${index + 1}</td>
