@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vicmic-dashboard-v18';
+const CACHE_NAME = 'vicmic-dashboard-v19';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -29,31 +29,34 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch: cache-first for same-origin, network-only for external
+// Fetch: Network-first, fallback to cache for offline support
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
     const url = new URL(event.request.url);
 
-    // Skip caching for external resources (Google, SheetJS CDN)
+    // Skip caching for external resources (Google, Supabase, SheetJS CDN)
     if (url.origin !== location.origin) return;
 
     event.respondWith(
-        caches.match(event.request).then(cached => {
-            if (cached) return cached;
-            return fetch(event.request).then(response => {
-                // Cache successful responses
+        fetch(event.request)
+            .then(response => {
+                // If network succeeds, cache the fresh response
                 if (response.status === 200) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                 }
                 return response;
-            });
-        }).catch(() => {
-            // Fallback to index.html for navigation requests (SPA)
-            if (event.request.mode === 'navigate') {
-                return caches.match('./index.html');
-            }
-        })
+            })
+            .catch(() => {
+                // If network fails (offline), try the cache
+                return caches.match(event.request).then(cached => {
+                    if (cached) return cached;
+                    // Fallback to index.html for navigation requests (SPA)
+                    if (event.request.mode === 'navigate') {
+                        return caches.match('./index.html');
+                    }
+                });
+            })
     );
 });
