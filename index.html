@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=36">
+    <link rel="stylesheet" href="style.css?v=37">
 </head>
 
 <body>
@@ -142,10 +142,14 @@
                 <!-- KPI Grid -->
                 <div id="kpi-grid" class="kpi-grid"></div>
 
-                <!-- Chart Section -->
                 <div class="glass-card" style="margin-bottom: 2rem;">
-                    <div class="card-header">
-                        <h2>📈 Tren Total Stok per Brand (7 Hari Terakhir)</h2>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2>📈 Tren Total Stok per Brand</h2>
+                        <select id="chart-timeframe" class="input-field" style="width: auto; padding: 4px 8px; font-size: 0.9em;">
+                            <option value="7">7 Hari Terakhir</option>
+                            <option value="14">14 Hari Terakhir</option>
+                            <option value="30">30 Hari Terakhir</option>
+                        </select>
                     </div>
                     <div class="card-body" style="position: relative; height: 300px; width: 100%;">
                         <canvas id="brandChart"></canvas>
@@ -369,7 +373,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=36"></script>
+    <script src="app.js?v=37"></script>
 </body>
 
 </html>

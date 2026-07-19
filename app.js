@@ -827,7 +827,21 @@ const Dashboard = {
         this.renderKPIs(data, prevData);
         this.renderPriceAlerts(data, prevData);
         this.renderRecommendations(data);
-        await this.renderBrandChart(currentDateStr);
+        
+        const tfSelect = document.getElementById('chart-timeframe');
+        if (tfSelect) {
+            const newTfSelect = tfSelect.cloneNode(true);
+            tfSelect.parentNode.replaceChild(newTfSelect, tfSelect);
+            
+            newTfSelect.addEventListener('change', async (e) => {
+                const limit = parseInt(e.target.value);
+                await this.renderBrandChart(currentDateStr, limit);
+            });
+            
+            await this.renderBrandChart(currentDateStr, parseInt(newTfSelect.value) || 7);
+        } else {
+            await this.renderBrandChart(currentDateStr, 7);
+        }
     },
 
     renderKPIs(data, prevData) {
@@ -985,10 +999,10 @@ const Dashboard = {
         });
     },
 
-    async renderBrandChart(currentDateStr) {
+    async renderBrandChart(currentDateStr, daysLimit = 7) {
         const allDates = await DB.getAllDates();
-        // Fetch up to 7 days, reverse so oldest is first
-        const dates = allDates.filter(d => d <= currentDateStr).slice(0, 7).reverse(); 
+        // Fetch up to daysLimit, reverse so oldest is first
+        const dates = allDates.filter(d => d <= currentDateStr).slice(0, daysLimit).reverse(); 
         
         if (dates.length === 0) return;
 
