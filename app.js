@@ -942,7 +942,11 @@ const Dashboard = {
             }
         });
 
-        alerts.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+        alerts.sort((a, b) => {
+            if (a.diff > 0 && b.diff < 0) return -1;
+            if (a.diff < 0 && b.diff > 0) return 1;
+            return Math.abs(b.diff) - Math.abs(a.diff);
+        });
         const toShow = alerts.slice(0, 50);
 
         if (toShow.length === 0) {
@@ -1016,7 +1020,11 @@ const Dashboard = {
             }
         });
 
-        alerts.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+        alerts.sort((a, b) => {
+            if (a.diff > 0 && b.diff < 0) return -1;
+            if (a.diff < 0 && b.diff > 0) return 1;
+            return Math.abs(b.diff) - Math.abs(a.diff);
+        });
         const toShow = alerts.slice(0, 50);
 
         if (toShow.length === 0) {
