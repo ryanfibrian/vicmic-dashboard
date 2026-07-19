@@ -816,7 +816,6 @@ const Dashboard = {
     async render() {
         // Let's use the latest database date for the dashboard
         const currentDateStr = await getLatestDatabaseDate();
-        document.getElementById('upload-date').value = currentDateStr; // Sync upload date to avoid confusion
         document.getElementById('dashboard-date-label').textContent = formatDate(currentDateStr);
 
         let dataObj = await DB.getData(currentDateStr);
