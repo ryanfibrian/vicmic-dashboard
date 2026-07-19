@@ -724,6 +724,7 @@ const Settings = {
         const inputOnline = document.getElementById('input-formula-online');
         const inputOffline = document.getElementById('input-formula-offline');
         const btnSave = document.getElementById('btn-save-formulas');
+        const btnCancel = document.getElementById('btn-cancel-formulas');
         
         inputOnline.value = PriceCalc._onlineFormula || '';
         inputOffline.value = PriceCalc._offlineFormula || '';
@@ -731,6 +732,9 @@ const Settings = {
         // Remove previous listeners if any (clone node technique)
         const newBtn = btnSave.cloneNode(true);
         btnSave.parentNode.replaceChild(newBtn, btnSave);
+        
+        const newBtnCancel = btnCancel.cloneNode(true);
+        btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
         
         let countdownInterval = null;
         let countdownValue = 5;
@@ -748,6 +752,7 @@ const Settings = {
                 newBtn.style.border = 'none';
                 newBtn.style.opacity = '0.7';
                 newBtn.style.cursor = 'not-allowed';
+                newBtnCancel.style.display = 'block';
                 
                 countdownInterval = setInterval(() => {
                     countdownValue--;
@@ -784,7 +789,24 @@ const Settings = {
                 newBtn.classList.add('btn-primary');
                 newBtn.style.cursor = 'pointer';
                 newBtn.style.opacity = '1';
+                newBtnCancel.style.display = 'none';
             }
+        });
+        
+        newBtnCancel.addEventListener('click', () => {
+            if (countdownInterval) clearInterval(countdownInterval);
+            isConfirming = false;
+            
+            // Reset button
+            newBtn.textContent = '💾 Ubah Rumus';
+            newBtn.style.backgroundColor = '';
+            newBtn.style.color = '';
+            newBtn.style.border = '';
+            newBtn.classList.add('btn-primary');
+            newBtn.style.cursor = 'pointer';
+            newBtn.style.opacity = '1';
+            
+            newBtnCancel.style.display = 'none';
         });
     }
 };
