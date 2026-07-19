@@ -383,8 +383,10 @@ const Auth = {
 
         if (this.currentUser.role === 'sales') {
             document.body.classList.add('role-sales');
+            document.getElementById('btn-toggle-distribusi').style.display = 'inline-block';
         } else {
             document.body.classList.remove('role-sales');
+            document.getElementById('btn-toggle-distribusi').style.display = 'none';
         }
 
         Router.init();
@@ -441,8 +443,8 @@ const Router = {
     handleRoute() {
         let page = window.location.hash.replace('#', '') || (Auth.isAdmin() ? 'dashboard' : 'pricelist');
 
-        // Guard: Sales can only see pricelist
-        if (Auth.isSales() && page !== 'pricelist') {
+        // Guard: Sales can only see pricelist and reports
+        if (Auth.isSales() && page !== 'pricelist' && page !== 'reports') {
             window.location.hash = 'pricelist';
             return;
         }
@@ -804,6 +806,7 @@ const PriceList = {
     sortColumn: 'no',
     sortDirection: 'asc',
     filters: {},
+    distribusiVisible: true,
 
     columns: [
         { key: 'no', label: 'No.', type: 'number', width: '50px' },
@@ -887,6 +890,7 @@ const PriceList = {
 
         this.columns.forEach(col => {
             if (col.adminOnly && !Auth.isAdmin()) return;
+            if (!this.distribusiVisible && col.key === 'distribusi') return;
 
             // Header cell
             const th = document.createElement('th');
@@ -986,6 +990,7 @@ const PriceList = {
             let rowHtml = '<tr>';
             this.columns.forEach(col => {
                 if (col.adminOnly && !Auth.isAdmin()) return;
+                if (!this.distribusiVisible && col.key === 'distribusi') return;
 
                 let val = item[col.key];
                 let displayVal = val;
@@ -1037,6 +1042,7 @@ const PriceList = {
             const row = {};
             this.columns.forEach(col => {
                 if (col.adminOnly && !Auth.isAdmin()) return;
+                if (!this.distribusiVisible && col.key === 'distribusi') return;
                 row[col.label] = item[col.key];
             });
             return row;
@@ -1296,6 +1302,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Logout
     document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
+
+    // Hide Distribusi Toggle
+    document.getElementById('btn-toggle-distribusi').addEventListener('click', (e) => {
+        PriceList.distribusiVisible = !PriceList.distribusiVisible;
+        e.target.innerHTML = PriceList.distribusiVisible ? '👁️ Hide Distribusi' : '👁️ Show Distribusi';
+        PriceList.renderHeader();
+        PriceList.renderBody();
+    });
 
     // Export
     document.getElementById('btn-export').addEventListener('click', () => PriceList.exportToExcel());

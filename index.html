@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=12">
 </head>
 
 <body>
@@ -61,7 +61,7 @@
                 <li class="nav-item" data-page="pricelist">
                     <span class="nav-icon">📋</span><span class="nav-text">Master Price List</span>
                 </li>
-                <li class="nav-item admin-only" data-page="reports">
+                <li class="nav-item" data-page="reports">
                     <span class="nav-icon">📈</span><span class="nav-text">Laporan</span>
                 </li>
                 <li class="nav-item admin-only" data-page="users">
@@ -147,7 +147,8 @@
                             <input type="date" id="pricelist-date-select" class="input-field">
                         </label>
                         <span id="pricelist-date-display" class="date-label"></span>
-                        <button id="btn-export" class="btn btn-primary btn-sm">📥 Export to Excel</button>
+                        <button id="btn-toggle-distribusi" class="btn btn-secondary btn-sm" style="display: none; margin-right: 8px;">👁️ Hide Distribusi</button>
+                        <button id="btn-export" class="btn btn-primary btn-sm">📊 Export to Excel</button>
                     </div>
                 </div>
                 <div class="table-wrapper">
@@ -166,7 +167,7 @@
             </section>
 
             <!-- ========== REPORTS PAGE ========== -->
-            <section id="page-reports" class="page admin-only">
+            <section id="page-reports" class="page">
                 <div class="page-header">
                     <h1>📈 Laporan Harian</h1>
                     <span id="reports-date-label" class="date-label"></span>
@@ -263,7 +264,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=12"></script>
 </body>
 
 </html>

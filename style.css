@@ -743,7 +743,7 @@ body {
   line-height: 1.4;
 }
 
-.data-table .col-serpong {
+.data-table td.col-serpong {
   background-color: var(--serpong-bg) !important;
   border-left: 2px solid var(--serpong-border);
   border-right: 2px solid var(--serpong-border);
