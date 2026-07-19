@@ -137,6 +137,19 @@ const DB = {
         if (error) console.error('removeUser error:', error);
     },
 
+    async updateUser(oldEmail, newEmail, newRole) {
+        const { error } = await supabaseClient
+            .from('allowed_users')
+            .update({ email: newEmail.toLowerCase(), role: newRole })
+            .eq('email', oldEmail.toLowerCase());
+        if (error) {
+            console.error('updateUser error:', error);
+            if (error.code === '23505') showToast('Email sudah terdaftar', 'warning');
+            return false;
+        }
+        return true;
+    },
+
     async findUser(email) {
         const { data, error } = await supabaseClient
             .from('allowed_users')
@@ -1185,7 +1198,10 @@ const UserManagement = {
                 <td>${u.addedBy || '-'}</td>
                 <td>${formatDate(u.addedAt)}</td>
                 <td>
-                    ${!u.isSuperAdmin ? `<button class="btn btn-sm btn-danger btn-delete-user" data-email="${u.email}">Hapus</button>` : ''}
+                    ${!u.isSuperAdmin ? `
+                        <button class="btn btn-sm btn-secondary btn-edit-user" data-email="${u.email}" data-role="${u.role}">Edit</button>
+                        <button class="btn btn-sm btn-danger btn-delete-user" data-email="${u.email}">Hapus</button>
+                    ` : ''}
                 </td>
             </tr>
         `).join('');
@@ -1193,11 +1209,49 @@ const UserManagement = {
         document.querySelectorAll('.btn-delete-user').forEach(btn => {
             btn.onclick = async () => {
                 const email = btn.dataset.email;
-                if (confirm(`Hapus user ${email}?`)) {
+                if (confirm(`Yakin ingin menghapus akses untuk ${email}?`)) {
                     await DB.removeUser(email);
                     showToast('User dihapus', 'success');
                     await this.renderTable();
                 }
+            };
+        });
+
+        document.querySelectorAll('.btn-edit-user').forEach(btn => {
+            btn.onclick = (e) => {
+                const tr = e.target.closest('tr');
+                const email = btn.dataset.email;
+                const role = btn.dataset.role;
+                
+                tr.innerHTML = `
+                    <td><input type="email" class="input-field edit-email" value="${email}" style="width: 100%; padding: 4px;"></td>
+                    <td>
+                        <select class="input-field edit-role" style="width: 100%; padding: 4px;">
+                            <option value="sales" ${role === 'sales' ? 'selected' : ''}>Sales</option>
+                            <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td style="white-space: nowrap;">
+                        <button class="btn btn-sm btn-primary btn-save-user" data-old-email="${email}">Save</button>
+                        <button class="btn btn-sm btn-secondary btn-cancel-edit">Batal</button>
+                    </td>
+                `;
+                
+                tr.querySelector('.btn-cancel-edit').onclick = () => this.renderTable();
+                tr.querySelector('.btn-save-user').onclick = async (e2) => {
+                    const oldEmail = e2.target.dataset.oldEmail;
+                    const newEmail = tr.querySelector('.edit-email').value.trim();
+                    const newRole = tr.querySelector('.edit-role').value;
+                    if (!newEmail) return;
+                    
+                    const success = await DB.updateUser(oldEmail, newEmail, newRole);
+                    if (success) {
+                        showToast('User berhasil diupdate', 'success');
+                        this.renderTable();
+                    }
+                };
             };
         });
     }
