@@ -835,12 +835,12 @@ body {
   border-radius: 4px;
 }
 
-.price-up {
+.price-up, .stock-down {
   color: var(--danger);
   background: rgba(255, 82, 82, 0.1);
 }
 
-.price-down {
+.price-down, .stock-up {
   color: var(--success);
   background: rgba(0, 230, 118, 0.1);
 }
