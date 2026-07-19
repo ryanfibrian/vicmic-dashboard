@@ -1742,7 +1742,18 @@ const Upload = {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Memuat riwayat...</td></tr>';
         
         try {
-            const dates = await DB.getAvailableDates();
+            let dates = await DB.getAvailableDates();
+            
+            const startDate = document.getElementById('filter-start-date')?.value;
+            const endDate = document.getElementById('filter-end-date')?.value;
+            
+            if (startDate) {
+                dates = dates.filter(d => d >= startDate);
+            }
+            if (endDate) {
+                dates = dates.filter(d => d <= endDate);
+            }
+
             if (dates.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Belum ada data yang diupload</td></tr>';
                 return;
@@ -1916,6 +1927,20 @@ const Upload = {
         };
 
         btnUpload.onclick = () => this.processUpload();
+        
+        const btnFilter = document.getElementById('btn-filter-history');
+        if (btnFilter) {
+            btnFilter.onclick = () => this.renderHistory();
+        }
+        
+        const btnReset = document.getElementById('btn-reset-history');
+        if (btnReset) {
+            btnReset.onclick = () => {
+                document.getElementById('filter-start-date').value = '';
+                document.getElementById('filter-end-date').value = '';
+                this.renderHistory();
+            };
+        }
     },
 
     onFileSelected(file) {

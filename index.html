@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=40">
+    <link rel="stylesheet" href="style.css?v=41">
 </head>
 
 <body>
@@ -114,8 +114,22 @@
                         <h2>📋 Riwayat Upload Data</h2>
                     </div>
                     <div class="card-body">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <button id="btn-bulk-delete" class="btn" style="background: var(--danger-color); color: white; display: none;">🗑️ Hapus Terpilih</button>
+                        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <label for="filter-start-date" style="font-size: 0.9em; font-weight: 500;">Dari:</label>
+                                    <input type="date" id="filter-start-date" class="input-field" style="padding: 4px 8px; font-size: 0.9em;">
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <label for="filter-end-date" style="font-size: 0.9em; font-weight: 500;">Sampai:</label>
+                                    <input type="date" id="filter-end-date" class="input-field" style="padding: 4px 8px; font-size: 0.9em;">
+                                </div>
+                                <button id="btn-filter-history" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.9em;">🔍 Filter</button>
+                                <button id="btn-reset-history" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.9em;">Reset</button>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; align-items: center; min-height: 32px;">
+                                <button id="btn-bulk-delete" class="btn" style="background: var(--danger-color); color: white; display: none; padding: 4px 12px; font-size: 0.9em;">🗑️ Hapus Terpilih</button>
+                            </div>
                         </div>
                         <div class="table-wrapper">
                             <table id="upload-history-table" class="data-table">
@@ -378,7 +392,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=40"></script>
+    <script src="app.js?v=41"></script>
 </body>
 
 </html>
