@@ -855,6 +855,7 @@ const Dashboard = {
 
         this.renderKPIs(data, prevData);
         this.renderPriceAlerts(data, prevData);
+        this.renderStockAlerts(data, prevData);
         this.renderRecommendations(data);
         
         const tfSelect = document.getElementById('chart-timeframe');
@@ -961,6 +962,84 @@ const Dashboard = {
                     </div>
                     <div class="alert-diff ${isUp ? 'price-up' : 'price-down'}">
                         ${isUp ? '+' : '-'}${formatCurrency(Math.abs(a.diff))}
+                    </div>
+                </div>`;
+            }).join('');
+    },
+
+    renderStockAlerts(data, prevData) {
+        const container = document.getElementById('stock-alert-list');
+        const prevMap = new Map();
+        prevData.forEach(p => prevMap.set(p.deskripsi.toLowerCase(), p.total || 0));
+
+        const alerts = [];
+        const currentKeys = new Set();
+        
+        data.forEach(p => {
+            const lowerDesc = p.deskripsi.toLowerCase();
+            currentKeys.add(lowerDesc);
+            const currentStock = p.total || 0;
+            
+            if (prevMap.has(lowerDesc)) {
+                const prevStock = prevMap.get(lowerDesc);
+                if (currentStock !== prevStock) {
+                    alerts.push({
+                        deskripsi: p.deskripsi,
+                        diff: currentStock - prevStock,
+                        old: prevStock,
+                        new: currentStock,
+                        type: 'change'
+                    });
+                }
+            } else {
+                alerts.push({
+                    deskripsi: p.deskripsi,
+                    diff: currentStock,
+                    old: 0,
+                    new: currentStock,
+                    type: 'new'
+                });
+            }
+        });
+
+        prevData.forEach(p => {
+            const lowerDesc = p.deskripsi.toLowerCase();
+            if (!currentKeys.has(lowerDesc)) {
+                const prevStock = p.total || 0;
+                alerts.push({
+                    deskripsi: p.deskripsi,
+                    diff: -prevStock,
+                    old: prevStock,
+                    new: 0,
+                    type: 'oos'
+                });
+            }
+        });
+
+        alerts.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+        const toShow = alerts.slice(0, 50);
+
+        if (toShow.length === 0) {
+            container.innerHTML = '<div class="empty-state">Belum ada data perubahan stok</div>';
+            return;
+        }
+
+        container.innerHTML = `<div class="alert-count">${alerts.length} produk berubah stok</div>` +
+            toShow.map(a => {
+                const isUp = a.diff > 0;
+                let badge = '';
+                if (a.type === 'new') badge = '<span class="badge-new-blink" style="font-size:0.6em; padding:2px 4px; margin-right:5px; vertical-align:middle;">BARU</span>';
+                if (a.type === 'oos') badge = '<span style="color:var(--danger); font-size:0.6em; padding:2px 4px; border:1px solid var(--danger); border-radius:4px; margin-right:5px; vertical-align:middle;">HABIS</span>';
+                
+                return `<div class="price-alert-item">
+                    <div class="alert-product">${badge}${a.deskripsi}</div>
+                    <div class="alert-prices">
+                        <span class="alert-old" style="text-decoration:none; opacity:0.6; font-weight:normal; font-size:0.85em;">${a.old}</span>
+                        <span class="alert-arrow ${isUp ? 'price-up' : 'price-down'}">${isUp ? '⬆️' : '⬇️'}</span>
+                        <span class="alert-new" style="font-weight:bold;">${a.new}</span>
+                    </div>
+                    <div class="alert-diff ${isUp ? 'price-up' : 'price-down'}">
+                        ${isUp ? '+' : '-'}${Math.abs(a.diff)}
                     </div>
                 </div>`;
             }).join('');
