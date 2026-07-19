@@ -1,6 +1,6 @@
 // 1. CONFIG & CONSTANTS
 const CONFIG = {
-    GOOGLE_CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID',
+    GOOGLE_CLIENT_ID: '330235446046-407adjbbot9v4cblg4anu5gp231i3rk6.apps.googleusercontent.com',
     STORAGE_KEYS: {
         USERS: 'vicmic_users',
         DATA_PREFIX: 'vicmic_data_'
@@ -52,11 +52,11 @@ function decodeJwt(token) {
     try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         return JSON.parse(jsonPayload);
-    } catch(e) {
+    } catch (e) {
         return {};
     }
 }
@@ -108,7 +108,7 @@ const DB = {
         this.saveUsers(users);
     },
     findUser(email) { return this.getUsers().find(u => u.email === email.toLowerCase()); },
-    
+
     saveData(dateStr, products) {
         localStorage.setItem(CONFIG.STORAGE_KEYS.DATA_PREFIX + dateStr, JSON.stringify(products));
     },
@@ -138,7 +138,7 @@ const DB = {
 // 5. AUTH MODULE (Auth object)
 const Auth = {
     currentUser: null,
-    
+
     init() {
         // Check existing session in sessionStorage
         const saved = sessionStorage.getItem('vicmic_session');
@@ -153,7 +153,7 @@ const Auth = {
         // Wait for Google script to load, then init, with fallback to demo login
         this.waitForGoogle();
     },
-    
+
     waitForGoogle() {
         // Try to init Google Sign-In, retry up to 3 seconds, then fallback to demo
         let attempts = 0;
@@ -169,7 +169,7 @@ const Auth = {
         };
         tryInit();
     },
-    
+
     initGoogleSignIn() {
         try {
             google.accounts.id.initialize({
@@ -180,12 +180,12 @@ const Auth = {
                 document.getElementById('google-signin-btn'),
                 { theme: 'filled_blue', size: 'large', width: 300, text: 'signin_with', shape: 'rectangular' }
             );
-        } catch(e) {
+        } catch (e) {
             console.warn('Google Sign-In init failed, using demo mode:', e);
             this.setupDemoLogin();
         }
     },
-    
+
     setupDemoLogin() {
         // Demo login for development/testing without valid Google Client ID
         const container = document.getElementById('google-signin-btn');
@@ -212,16 +212,16 @@ const Auth = {
             });
         });
     },
-    
+
     handleCredentialResponse(response) {
         const payload = decodeJwt(response.credential);
         this.processLogin(payload.email, payload.name, payload.picture);
     },
-    
+
     processLogin(email, name, picture) {
         email = email.toLowerCase();
         const users = DB.getUsers();
-        
+
         // First user EVER = Super Admin
         if (users.length === 0) {
             DB.addUser(email, 'admin', 'system');
@@ -230,23 +230,23 @@ const Auth = {
             DB.saveUsers(u);
             showToast(`${name}, Anda terdaftar sebagai Super Admin!`, 'success');
         }
-        
+
         const user = DB.findUser(email);
         if (!user) {
             document.getElementById('login-error').textContent = 'Email Anda belum terdaftar. Hubungi Admin.';
             showToast('Akses ditolak: Email belum di-whitelist', 'error');
             return;
         }
-        
+
         this.currentUser = { email, name, picture, role: user.role, isSuperAdmin: user.isSuperAdmin || false };
         sessionStorage.setItem('vicmic_session', JSON.stringify(this.currentUser));
         this.onLoginSuccess();
     },
-    
+
     onLoginSuccess() {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('app-shell').style.display = '';
-        
+
         // Set user info in sidebar
         document.getElementById('user-name').textContent = this.currentUser.name || this.currentUser.email;
         const avatar = document.getElementById('user-avatar');
@@ -256,24 +256,24 @@ const Auth = {
         } else {
             avatar.style.display = 'none';
         }
-        
+
         const badge = document.getElementById('user-role-badge');
         badge.textContent = this.currentUser.role.toUpperCase();
         badge.className = 'user-role-badge badge-' + this.currentUser.role;
-        
+
         if (this.currentUser.role === 'sales') {
             document.body.classList.add('role-sales');
         } else {
             document.body.classList.remove('role-sales');
         }
-        
+
         Router.init();
     },
-    
+
     verifyUser(email) { return !!DB.findUser(email.toLowerCase()); },
     isAdmin() { return this.currentUser && this.currentUser.role === 'admin'; },
     isSales() { return this.currentUser && this.currentUser.role === 'sales'; },
-    
+
     logout() {
         this.currentUser = null;
         sessionStorage.removeItem('vicmic_session');
@@ -284,7 +284,7 @@ const Auth = {
         window.location.hash = '';
         this.waitForGoogle();
     },
-    
+
     showLoginPage() {
         document.getElementById('login-page').style.display = '';
         document.getElementById('app-shell').style.display = 'none';
@@ -295,11 +295,11 @@ const Auth = {
 const Router = {
     currentPage: null,
     initialized: false,
-    
+
     init() {
         if (!this.initialized) {
             window.addEventListener('hashchange', () => this.handleRoute());
-            
+
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', () => {
                     window.location.hash = item.dataset.page;
@@ -309,7 +309,7 @@ const Router = {
             });
             this.initialized = true;
         }
-        
+
         const defaultPage = Auth.isAdmin() ? 'dashboard' : 'pricelist';
         if (window.location.hash && window.location.hash !== '#') {
             this.handleRoute();
@@ -317,16 +317,16 @@ const Router = {
             window.location.hash = defaultPage;
         }
     },
-    
+
     handleRoute() {
         let page = window.location.hash.replace('#', '') || (Auth.isAdmin() ? 'dashboard' : 'pricelist');
-        
+
         // Guard: Sales can only see pricelist
         if (Auth.isSales() && page !== 'pricelist') {
             window.location.hash = 'pricelist';
             return;
         }
-        
+
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const target = document.getElementById('page-' + page);
         if (target) {
@@ -338,7 +338,7 @@ const Router = {
             this.renderPage(page);
         }
     },
-    
+
     renderPage(page) {
         switch (page) {
             case 'dashboard': Dashboard.render(); break;
@@ -360,12 +360,12 @@ const ExcelParser = {
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-                    
+
                     if (jsonData.length === 0) { reject('File Excel kosong'); return; }
-                    
+
                     const headers = Object.keys(jsonData[0]);
                     const mapping = this.autoMapColumns(headers);
-                    
+
                     if (mapping.unmapped.length > 0) {
                         this.showMappingModal(headers, mapping, (finalMapping) => {
                             const products = this.extractProducts(jsonData, finalMapping.mapped);
@@ -383,7 +383,7 @@ const ExcelParser = {
             reader.readAsArrayBuffer(file);
         });
     },
-    
+
     autoMapColumns(headers) {
         const mapped = {};
         const unmapped = [];
@@ -396,7 +396,7 @@ const ExcelParser = {
         }
         return { mapped, unmapped };
     },
-    
+
     showMappingModal(headers, partialMapping, onSuccess, onReject) {
         const mapped = { ...partialMapping.mapped };
         const unmapped = partialMapping.unmapped;
@@ -407,7 +407,7 @@ const ExcelParser = {
             total: 'Total Stok',
             deskripsi: 'Deskripsi / Nama Barang'
         };
-        
+
         let html = '<p style="margin-bottom:1rem;color:var(--text-secondary)">Beberapa kolom tidak dapat dideteksi otomatis. Pilih kolom yang sesuai:</p>';
         unmapped.forEach(field => {
             html += `<div style="margin-bottom:1rem;">
@@ -418,7 +418,7 @@ const ExcelParser = {
                 </select>
             </div>`;
         });
-        
+
         showModal('🔗 Smart Column Mapping', html, [
             {
                 text: 'Konfirmasi Mapping',
@@ -443,7 +443,7 @@ const ExcelParser = {
             }
         ]);
     },
-    
+
     extractProducts(jsonData, mapping) {
         return jsonData.map((row, i) => ({
             no: i + 1,
@@ -481,30 +481,30 @@ const Dashboard = {
         const currentDateStr = document.getElementById('upload-date').value || getEffectiveDate();
         document.getElementById('upload-date').value = currentDateStr;
         document.getElementById('dashboard-date-label').textContent = formatDate(currentDateStr);
-        
+
         let dataObj = DB.getData(currentDateStr);
         let prevDataObj = DB.getPreviousData(currentDateStr);
-        
+
         const data = dataObj || [];
         const prevData = prevDataObj ? prevDataObj.data : [];
-        
+
         this.renderKPIs(data, prevData);
         this.renderPriceAlerts(data, prevData);
         this.renderStockUrgency(data, currentDateStr);
     },
-    
+
     renderKPIs(data, prevData) {
         const grid = document.getElementById('kpi-grid');
         let totalSerpong = 0;
         let totalHarco = 0;
         let totalGlobal = 0;
-        
+
         const newProducts = [];
         const outOfStock = [];
-        
+
         const prevMap = new Map();
         prevData.forEach(p => prevMap.set(p.deskripsi.toLowerCase(), p));
-        
+
         const currentMap = new Map();
         data.forEach(p => {
             currentMap.set(p.deskripsi.toLowerCase(), p);
@@ -515,13 +515,13 @@ const Dashboard = {
                 newProducts.push(p);
             }
         });
-        
+
         prevData.forEach(p => {
             if (!currentMap.has(p.deskripsi.toLowerCase())) {
                 outOfStock.push(p);
             }
         });
-        
+
         const kpis = [
             { label: 'Total Tipe Produk', value: data.length, icon: '📦', color: '#667eea' },
             { label: 'Total Stok Global', value: totalGlobal, icon: '🌍', color: '#764ba2' },
@@ -530,8 +530,8 @@ const Dashboard = {
             { label: 'Produk Baru', value: newProducts.length, icon: '✨', color: '#00e676' },
             { label: 'Produk Habis', value: outOfStock.length, icon: '🚫', color: '#ffab00' }
         ];
-        
-        grid.innerHTML = kpis.map(k => 
+
+        grid.innerHTML = kpis.map(k =>
             `<div class="kpi-card glass-card" style="--card-accent: ${k.color}">
                 <div class="kpi-icon">${k.icon}</div>
                 <div class="kpi-value">${formatNumber(k.value)}</div>
@@ -539,12 +539,12 @@ const Dashboard = {
             </div>`
         ).join('');
     },
-    
+
     renderPriceAlerts(data, prevData) {
         const container = document.getElementById('price-alert-list');
         const prevMap = new Map();
         prevData.forEach(p => prevMap.set(p.deskripsi.toLowerCase(), p.distribusi));
-        
+
         const alerts = [];
         data.forEach(p => {
             const lowerDesc = p.deskripsi.toLowerCase();
@@ -560,15 +560,15 @@ const Dashboard = {
                 }
             }
         });
-        
+
         alerts.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
         const toShow = alerts.slice(0, 50);
-        
+
         if (toShow.length === 0) {
             container.innerHTML = '<div class="empty-state">Belum ada data perbandingan</div>';
             return;
         }
-        
+
         container.innerHTML = `<div class="alert-count">${alerts.length} produk berubah harga</div>` +
             toShow.map(a => {
                 const isUp = a.diff > 0;
@@ -585,7 +585,7 @@ const Dashboard = {
                 </div>`;
             }).join('');
     },
-    
+
     renderStockUrgency(data, currentDateStr) {
         const container = document.getElementById('stock-urgency-list');
         const dates = DB.getAllDates().filter(d => d <= currentDateStr).slice(0, 7);
@@ -593,23 +593,23 @@ const Dashboard = {
             container.innerHTML = '<div class="empty-state">Belum ada data historis yang cukup</div>';
             return;
         }
-        
+
         const histories = dates.map(d => DB.getData(d));
         const urgencies = [];
-        
+
         data.forEach(p => {
             const desc = p.deskripsi.toLowerCase();
             let totalDecrease = 0;
             let decreaseDays = 0;
-            
+
             for (let i = 0; i < histories.length - 1; i++) {
                 const currentDayData = histories[i];
-                const prevDayData = histories[i+1];
+                const prevDayData = histories[i + 1];
                 if (!currentDayData || !prevDayData) continue;
-                
+
                 const currentItem = currentDayData.find(item => item.deskripsi.toLowerCase() === desc);
                 const prevItem = prevDayData.find(item => item.deskripsi.toLowerCase() === desc);
-                
+
                 if (currentItem && prevItem) {
                     if (prevItem.total > currentItem.total) {
                         totalDecrease += (prevItem.total - currentItem.total);
@@ -617,14 +617,14 @@ const Dashboard = {
                     }
                 }
             }
-            
+
             const dailyRate = decreaseDays > 0 ? totalDecrease / decreaseDays : 0;
             const daysLeft = dailyRate > 0 ? p.total / dailyRate : Infinity;
-            
+
             let status = 'safe';
             let label = 'STOK AMAN';
             let color = 'var(--success-color)';
-            
+
             if (p.total === 0 || daysLeft < 3) {
                 status = 'restock';
                 label = 'RE-STOCK NOW';
@@ -634,7 +634,7 @@ const Dashboard = {
                 label = 'STOK KRITIS';
                 color = 'var(--warning-color)';
             }
-            
+
             if (status !== 'safe') {
                 urgencies.push({
                     deskripsi: p.deskripsi,
@@ -647,20 +647,20 @@ const Dashboard = {
                 });
             }
         });
-        
+
         urgencies.sort((a, b) => {
             if (a.status === 'restock' && b.status !== 'restock') return -1;
             if (b.status === 'restock' && a.status !== 'restock') return 1;
             return a.daysLeft - b.daysLeft;
         });
-        
+
         if (urgencies.length === 0) {
             container.innerHTML = '<div class="empty-state">Semua stok aman</div>';
             return;
         }
-        
+
         container.innerHTML = `<div class="alert-count">${urgencies.length} produk perlu perhatian</div>` +
-            urgencies.slice(0, 30).map(u => 
+            urgencies.slice(0, 30).map(u =>
                 `<div class="stock-item">
                     <div class="stock-info">
                         <span class="stock-name">${u.deskripsi}</span>
@@ -679,7 +679,7 @@ const PriceList = {
     sortColumn: 'no',
     sortDirection: 'asc',
     filters: {},
-    
+
     columns: [
         { key: 'no', label: 'No.', type: 'number' },
         { key: 'deskripsi', label: 'Deskripsi / Nama Barang', type: 'text' },
@@ -690,7 +690,7 @@ const PriceList = {
         { key: 'hargaOnline', label: 'Harga Online', type: 'currency' },
         { key: 'hargaOffline', label: 'Harga Offline', type: 'currency' }
     ],
-    
+
     render() {
         const dateSelect = document.getElementById('pricelist-date-select');
         let targetDate = dateSelect.value;
@@ -698,13 +698,13 @@ const PriceList = {
             targetDate = getEffectiveDate();
             dateSelect.value = targetDate;
         }
-        
+
         document.getElementById('pricelist-date-display').textContent = formatDate(targetDate);
-        
+
         dateSelect.onchange = () => {
             this.render();
         };
-        
+
         let rawData = DB.getData(targetDate);
         if (!rawData) {
             // Fallback: cari data terbaru yang tersedia
@@ -721,31 +721,31 @@ const PriceList = {
             hargaOnline: PriceCalc.hargaOnline(p.distribusi),
             hargaOffline: PriceCalc.hargaOffline(p.distribusi)
         }));
-        
+
         this.renderHeader();
         this.applyFiltersAndSort();
     },
-    
+
     renderHeader() {
         const headerRow = document.getElementById('pricelist-header-row');
         const filterRow = document.getElementById('pricelist-filter-row');
-        
+
         headerRow.innerHTML = '';
         filterRow.innerHTML = '';
-        
+
         this.columns.forEach(col => {
             if (col.adminOnly && !Auth.isAdmin()) return;
-            
+
             // Header cell
             const th = document.createElement('th');
             th.textContent = col.label;
             if (col.class) th.classList.add(col.class);
             th.style.cursor = 'pointer';
-            
+
             if (this.sortColumn === col.key) {
                 th.textContent += this.sortDirection === 'asc' ? ' ↑' : ' ↓';
             }
-            
+
             th.onclick = () => {
                 if (this.sortColumn === col.key) {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -757,7 +757,7 @@ const PriceList = {
                 this.renderHeader();
             };
             headerRow.appendChild(th);
-            
+
             // Filter cell
             const filterTh = document.createElement('th');
             if (col.class) filterTh.classList.add(col.class);
@@ -769,69 +769,69 @@ const PriceList = {
             input.style.padding = '4px 8px';
             input.style.fontSize = '0.8rem';
             input.value = this.filters[col.key] || '';
-            
+
             input.oninput = (e) => {
                 this.filters[col.key] = e.target.value;
                 this.applyFiltersAndSort();
             };
-            
+
             filterTh.appendChild(input);
             filterRow.appendChild(filterTh);
         });
     },
-    
+
     applyFiltersAndSort() {
         this.filteredData = this.data.filter(item => {
             for (const key in this.filters) {
                 const filterVal = this.filters[key].toLowerCase();
                 if (!filterVal) continue;
-                
+
                 const itemVal = String(item[key] || '').toLowerCase();
                 if (!itemVal.includes(filterVal)) return false;
             }
             return true;
         });
-        
+
         this.filteredData.sort((a, b) => {
             let valA = a[this.sortColumn];
             let valB = b[this.sortColumn];
-            
+
             if (typeof valA === 'string') valA = valA.toLowerCase();
             if (typeof valB === 'string') valB = valB.toLowerCase();
-            
+
             if (valA < valB) return this.sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return this.sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-        
+
         this.renderBody();
     },
-    
+
     renderBody() {
         const tbody = document.getElementById('pricelist-body');
         const emptyState = document.getElementById('pricelist-empty');
         const tableWrapper = document.querySelector('#page-pricelist .table-wrapper');
-        
+
         if (this.filteredData.length === 0) {
             tbody.innerHTML = '';
             tableWrapper.style.display = 'none';
             emptyState.style.display = 'flex';
             return;
         }
-        
+
         tableWrapper.style.display = 'block';
         emptyState.style.display = 'none';
-        
+
         tbody.innerHTML = this.filteredData.map(item => {
             let rowHtml = '<tr>';
             this.columns.forEach(col => {
                 if (col.adminOnly && !Auth.isAdmin()) return;
-                
+
                 let val = item[col.key];
                 let displayVal = val;
                 if (col.type === 'currency') displayVal = formatCurrency(val);
                 else if (col.type === 'number') displayVal = formatNumber(val);
-                
+
                 let cls = col.class ? ` class="${col.class}"` : '';
                 rowHtml += `<td${cls}>${displayVal}</td>`;
             });
@@ -839,13 +839,13 @@ const PriceList = {
             return rowHtml;
         }).join('');
     },
-    
+
     exportToExcel() {
         if (this.filteredData.length === 0) {
             showToast('Tidak ada data untuk diexport', 'error');
             return;
         }
-        
+
         const exportData = this.filteredData.map(item => {
             const row = {};
             this.columns.forEach(col => {
@@ -854,11 +854,11 @@ const PriceList = {
             });
             return row;
         });
-        
+
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "PriceList");
-        
+
         const dateStr = document.getElementById('pricelist-date-select').value;
         XLSX.writeFile(wb, `Vicmic_PriceList_${dateStr}.xlsx`);
     }
@@ -869,35 +869,35 @@ const Reports = {
     render() {
         const dateStr = getEffectiveDate();
         document.getElementById('reports-date-label').textContent = formatDate(dateStr);
-        
+
         const dataObj = DB.getData(dateStr);
         const prevDataObj = DB.getPreviousData(dateStr);
-        
+
         const data = dataObj || [];
         const prevData = prevDataObj ? prevDataObj.data : [];
-        
+
         this.renderNewItems(data, prevData);
         this.renderOutOfStock(data);
-        
+
         // Setup tabs
         document.querySelectorAll('.report-tab').forEach(tab => {
             tab.onclick = () => {
                 document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.report-content').forEach(c => c.classList.remove('active'));
-                
+
                 tab.classList.add('active');
                 const contentId = tab.dataset.tab === 'new' ? 'report-new-items' : 'report-out-of-stock';
                 document.getElementById(contentId).classList.add('active');
             };
         });
     },
-    
+
     renderNewItems(data, prevData) {
         const prevSet = new Set(prevData.map(p => p.deskripsi.toLowerCase()));
         const newItems = data.filter(p => !prevSet.has(p.deskripsi.toLowerCase()));
-        
+
         const tbody = document.querySelector('#new-items-table tbody');
-        
+
         document.querySelector('#new-items-table thead tr').innerHTML = `
             <th>No.</th>
             <th>Deskripsi</th>
@@ -906,15 +906,15 @@ const Reports = {
             <th>Harco</th>
             <th>Total</th>
         `;
-        
+
         if (newItems.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Tidak ada barang baru hari ini</td></tr>';
             return;
         }
-        
+
         tbody.innerHTML = newItems.map((item, i) => `
             <tr>
-                <td>${i+1}</td>
+                <td>${i + 1}</td>
                 <td>${item.deskripsi}</td>
                 <td>${formatCurrency(item.distribusi)}</td>
                 <td>${formatNumber(item.serpong)}</td>
@@ -923,10 +923,10 @@ const Reports = {
             </tr>
         `).join('');
     },
-    
+
     renderOutOfStock(data) {
         const oosItems = data.filter(p => p.total === 0 || p.serpong === 0);
-        
+
         const tbody = document.querySelector('#oos-table tbody');
         document.querySelector('#oos-table thead tr').innerHTML = `
             <th>No.</th>
@@ -935,17 +935,17 @@ const Reports = {
             <th>Serpong</th>
             <th>Harco</th>
         `;
-        
+
         if (oosItems.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Tidak ada barang kosong</td></tr>';
             return;
         }
-        
+
         tbody.innerHTML = oosItems.map((item, i) => {
             let rowClass = item.total === 0 ? 'row-danger' : (item.serpong === 0 ? 'row-warning' : '');
             return `
             <tr class="${rowClass}">
-                <td>${i+1}</td>
+                <td>${i + 1}</td>
                 <td>${item.deskripsi}</td>
                 <td>${formatNumber(item.total)}</td>
                 <td>${formatNumber(item.serpong)}</td>
@@ -964,25 +964,25 @@ const UserManagement = {
             e.preventDefault();
             const email = document.getElementById('input-user-email').value.trim();
             const role = document.getElementById('select-user-role').value;
-            
+
             if (!email) return;
-            
+
             if (DB.findUser(email)) {
                 showToast('Email sudah terdaftar', 'error');
                 return;
             }
-            
+
             DB.addUser(email, role, Auth.currentUser.email);
             showToast('User berhasil ditambahkan', 'success');
             document.getElementById('input-user-email').value = '';
             this.renderTable();
         };
     },
-    
+
     renderTable() {
         const tbody = document.getElementById('users-table-body');
         const users = DB.getUsers();
-        
+
         tbody.innerHTML = users.map(u => `
             <tr>
                 <td>${u.email} ${u.isSuperAdmin ? '<span class="badge badge-admin">SUPER ADMIN</span>' : ''}</td>
@@ -994,7 +994,7 @@ const UserManagement = {
                 </td>
             </tr>
         `).join('');
-        
+
         document.querySelectorAll('.btn-delete-user').forEach(btn => {
             btn.onclick = () => {
                 const email = btn.dataset.email;
@@ -1011,26 +1011,26 @@ const UserManagement = {
 // 13. UPLOAD MODULE
 const Upload = {
     selectedFile: null,
-    
+
     init() {
         const dropzone = document.getElementById('upload-dropzone');
         const fileInput = document.getElementById('file-input');
         const btnUpload = document.getElementById('btn-upload');
         const dateInput = document.getElementById('upload-date');
-        
+
         dateInput.value = getEffectiveDate();
-        
+
         dropzone.onclick = () => fileInput.click();
-        
+
         dropzone.ondragover = (e) => {
             e.preventDefault();
             dropzone.style.borderColor = 'var(--primary-color)';
         };
-        
+
         dropzone.ondragleave = () => {
             dropzone.style.borderColor = '';
         };
-        
+
         dropzone.ondrop = (e) => {
             e.preventDefault();
             dropzone.style.borderColor = '';
@@ -1038,54 +1038,54 @@ const Upload = {
                 this.onFileSelected(e.dataTransfer.files[0]);
             }
         };
-        
+
         fileInput.onchange = (e) => {
             if (e.target.files.length) {
                 this.onFileSelected(e.target.files[0]);
             }
         };
-        
+
         btnUpload.onclick = () => this.processUpload();
     },
-    
+
     onFileSelected(file) {
         this.selectedFile = file;
         const status = document.getElementById('upload-status');
         status.innerHTML = `<span style="color:var(--success-color)">File terpilih: ${file.name}</span>`;
         document.getElementById('btn-upload').disabled = false;
     },
-    
+
     async processUpload() {
         const dateStr = document.getElementById('upload-date').value;
         if (!dateStr) {
             showToast('Pilih tanggal berlaku', 'error');
             return;
         }
-        
+
         if (isSunday(dateStr)) {
             showToast('Tidak bisa upload untuk hari Minggu!', 'error');
             return;
         }
-        
+
         if (!this.selectedFile) {
             showToast('Pilih file terlebih dahulu', 'error');
             return;
         }
-        
+
         try {
             document.getElementById('btn-upload').disabled = true;
             document.getElementById('upload-status').innerHTML = 'Memproses...';
-            
+
             const products = await ExcelParser.parse(this.selectedFile);
             DB.saveData(dateStr, products);
-            
+
             showToast(`Berhasil menyimpan ${products.length} produk`, 'success');
             document.getElementById('upload-status').innerHTML = '';
             this.selectedFile = null;
             document.getElementById('file-input').value = '';
-            
+
             Dashboard.render();
-            
+
         } catch (err) {
             showToast(err, 'error');
             document.getElementById('upload-status').innerHTML = `<span style="color:var(--danger-color)">${err}</span>`;
@@ -1101,13 +1101,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
     }
-    
+
     // Modal close handlers
     document.getElementById('btn-modal-close').addEventListener('click', hideModal);
     document.getElementById('modal-overlay').addEventListener('click', (e) => {
         if (e.target.id === 'modal-overlay') hideModal();
     });
-    
+
     // Mobile menu toggle
     document.getElementById('mobile-menu-toggle').addEventListener('click', () => {
         document.getElementById('sidebar').classList.toggle('open');
@@ -1117,16 +1117,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('sidebar').classList.remove('open');
         document.getElementById('sidebar-overlay').classList.remove('show');
     });
-    
+
     // Logout
     document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
-    
+
     // Export
     document.getElementById('btn-export').addEventListener('click', () => PriceList.exportToExcel());
-    
+
     // Upload init
     Upload.init();
-    
+
     // Initialize Auth
     Auth.init();
 });
