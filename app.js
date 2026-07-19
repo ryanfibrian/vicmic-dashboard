@@ -928,21 +928,24 @@ const PriceList = {
                 filterTh.style.width = col.width;
                 filterTh.style.minWidth = col.width;
             }
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'input-field column-filter';
-            input.placeholder = `Filter...`;
-            input.style.width = '100%';
-            input.style.padding = '4px 8px';
-            input.style.fontSize = '0.8rem';
-            input.value = this.filters[col.key] || '';
+            const searchableColumns = ['deskripsi', 'total', 'harco', 'serpong'];
+            if (searchableColumns.includes(col.key)) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'input-field column-filter';
+                input.placeholder = `Filter...`;
+                input.style.width = '100%';
+                input.style.padding = '4px 8px';
+                input.style.fontSize = '0.8rem';
+                input.value = this.filters[col.key] || '';
 
-            input.oninput = (e) => {
-                this.filters[col.key] = e.target.value;
-                this.applyFiltersAndSort();
-            };
+                input.oninput = (e) => {
+                    this.filters[col.key] = e.target.value;
+                    this.applyFiltersAndSort();
+                };
 
-            filterTh.appendChild(input);
+                filterTh.appendChild(input);
+            }
             filterRow.appendChild(filterTh);
         });
     },
