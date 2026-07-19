@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=43">
+    <link rel="stylesheet" href="style.css?v=44">
 </head>
 
 <body>
@@ -189,34 +189,38 @@
                         <div class="card-header">
                             <h2>🚚 Rekomendasi Tarik ke Serpong</h2>
                         </div>
-                        <div class="card-body scrollable">
-                            <table class="data-table" id="pull-serpong-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-deskripsi">Nama Barang</th>
-                                        <th style="width: 80px; text-align: right;">Srp</th>
-                                        <th style="width: 80px; text-align: right;">Hrc</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="pull-serpong-body"></tbody>
-                            </table>
+                        <div class="card-body">
+                            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                                <table class="data-table" id="pull-serpong-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-deskripsi">Nama Barang</th>
+                                            <th style="width: 80px; text-align: right;">Srp</th>
+                                            <th style="width: 80px; text-align: right;">Hrc</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pull-serpong-body"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                     <div class="glass-card">
                         <div class="card-header">
                             <h2>📦 Rekomendasi Retur ke Harco</h2>
                         </div>
-                        <div class="card-body scrollable">
-                            <table class="data-table" id="return-harco-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-deskripsi">Nama Barang</th>
-                                        <th style="width: 80px; text-align: right;">Srp</th>
-                                        <th style="width: 80px; text-align: right;">Hrc</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="return-harco-body"></tbody>
-                            </table>
+                        <div class="card-body">
+                            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                                <table class="data-table" id="return-harco-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-deskripsi">Nama Barang</th>
+                                            <th style="width: 80px; text-align: right;">Srp</th>
+                                            <th style="width: 80px; text-align: right;">Hrc</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="return-harco-body"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -390,7 +394,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=43"></script>
+    <script src="app.js?v=44"></script>
 </body>
 
 </html>
