@@ -60,6 +60,11 @@ function getEffectiveDate() {
     return dateToKey(today);
 }
 
+async function getLatestDatabaseDate() {
+    const dates = await DB.getAllDates();
+    return dates.length > 0 ? dates[0] : getEffectiveDate();
+}
+
 function decodeJwt(token) {
     try {
         const base64Url = token.split('.')[1];
@@ -662,8 +667,9 @@ const PriceCalc = {
 // 9. DASHBOARD MODULE
 const Dashboard = {
     async render() {
-        const currentDateStr = document.getElementById('upload-date').value || getEffectiveDate();
-        document.getElementById('upload-date').value = currentDateStr;
+        // Let's use the latest database date for the dashboard
+        const currentDateStr = await getLatestDatabaseDate();
+        document.getElementById('upload-date').value = currentDateStr; // Sync upload date to avoid confusion
         document.getElementById('dashboard-date-label').textContent = formatDate(currentDateStr);
 
         let dataObj = await DB.getData(currentDateStr);
@@ -889,7 +895,7 @@ const PriceList = {
         const dateSelect = document.getElementById('pricelist-date-select');
         let targetDate = dateSelect.value;
         if (!targetDate) {
-            targetDate = getEffectiveDate();
+            targetDate = await getLatestDatabaseDate();
             dateSelect.value = targetDate;
         }
 
@@ -1221,7 +1227,7 @@ const PriceList = {
 // 11. REPORTS MODULE
 const Reports = {
     async render() {
-        const dateStr = getEffectiveDate();
+        const dateStr = await getLatestDatabaseDate();
         document.getElementById('reports-date-label').textContent = formatDate(dateStr);
 
         const dataObj = await DB.getData(dateStr);
