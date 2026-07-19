@@ -17,7 +17,12 @@ const CONFIG = {
         serpong: ['serpong', 'stok serpong', 'cabang serpong'],
         harco: ['harco', 'stok harco', 'cabang harco'],
         total: ['total', 'total stok', 'stok global'],
-        deskripsi: ['new deskripsi', 'deskripsi', 'nama barang', 'item']
+        deskripsi: ['new deskripsi', 'deskripsi', 'nama barang', 'item'],
+        sku: ['sku', 'stock keeping unit', 'item code'],
+        pn: ['pn', 'part number', 'part no'],
+        type: ['new type', 'type', 'tipe', 'category'],
+        srp: ['srp', 'suggested retail price', 'harga srp', 'harga ritel'],
+        promo_sellout: ['promo sellout', 'promo', 'sellout', 'cashback']
     },
     REQUIRED_COLUMNS: ['distribusi', 'serpong', 'harco', 'total', 'deskripsi']
 };
@@ -199,6 +204,23 @@ const DB = {
             const { error } = await supabaseClient.from('price_data').insert(rows);
             if (error) { console.error('saveData error:', error); return; }
         }
+    },
+
+    async getAvailableDates() {
+        const { data, error } = await supabaseClient
+            .from('vicmic_pricelist')
+            .select('date')
+            .order('date', { ascending: false });
+        if (error) { console.error(error); return []; }
+        return data.map(d => d.date);
+    },
+
+    async deleteData(dateStr) {
+        const { error } = await supabaseClient
+            .from('vicmic_pricelist')
+            .delete()
+            .eq('date', dateStr);
+        if (error) throw error;
     },
 
     async getData(dateStr) {
@@ -586,11 +608,16 @@ const ExcelParser = {
     extractProducts(jsonData, mapping) {
         return jsonData.map((row, i) => ({
             no: i + 1,
+            sku: String(row[mapping.sku] || '').trim(),
+            pn: String(row[mapping.pn] || '').trim(),
+            type: String(row[mapping.type] || '').trim(),
             deskripsi: String(row[mapping.deskripsi] || '').trim(),
             distribusi: parseFloat(String(row[mapping.distribusi]).replace(/[^0-9.-]/g, '')) || 0,
             serpong: parseInt(String(row[mapping.serpong]).replace(/[^0-9-]/g, '')) || 0,
             harco: parseInt(String(row[mapping.harco]).replace(/[^0-9-]/g, '')) || 0,
-            total: parseInt(String(row[mapping.total]).replace(/[^0-9-]/g, '')) || 0
+            total: parseInt(String(row[mapping.total]).replace(/[^0-9-]/g, '')) || 0,
+            srp: parseFloat(String(row[mapping.srp]).replace(/[^0-9.-]/g, '')) || 0,
+            promo_sellout: String(row[mapping.promo_sellout] || '').trim()
         })).filter(p => p.deskripsi !== '');
     }
 };
@@ -826,13 +853,18 @@ const PriceList = {
 
     columns: [
         { key: 'no', label: 'No.', type: 'number', width: '50px' },
+        { key: 'sku', label: 'SKU', type: 'text', hidden: true },
+        { key: 'pn', label: 'PN', type: 'text', hidden: true },
+        { key: 'type', label: 'Type', type: 'text', hidden: true },
         { key: 'deskripsi', label: 'Deskripsi / Nama Barang', type: 'text', class: 'col-deskripsi' },
-        { key: 'distribusi', label: 'Distribusi', type: 'currency' },
         { key: 'total', label: 'Total', type: 'number', width: '80px', class: 'col-stock' },
         { key: 'harco', label: 'Harco', type: 'number', width: '80px', class: 'col-stock' },
         { key: 'serpong', label: 'Serpong', type: 'number', class: 'col-serpong', width: '90px' },
+        { key: 'distribusi', label: 'Distribusi', type: 'currency' },
         { key: 'hargaOnline', label: 'Harga Online', type: 'currency' },
-        { key: 'hargaOffline', label: 'Harga Offline', type: 'currency' }
+        { key: 'hargaOffline', label: 'Harga Offline', type: 'currency' },
+        { key: 'srp', label: 'SRP', type: 'currency' },
+        { key: 'promo_sellout', label: 'Promo Sellout', type: 'text' }
     ],
 
     async render() {
@@ -905,6 +937,7 @@ const PriceList = {
         filterRow.innerHTML = '';
 
         this.columns.forEach(col => {
+            if (col.hidden) return;
             if (col.adminOnly && !Auth.isAdmin()) return;
             if (!this.distribusiVisible && col.key === 'distribusi') return;
 
@@ -1019,6 +1052,7 @@ const PriceList = {
         tbody.innerHTML = this.filteredData.map(item => {
             let rowHtml = '<tr>';
             this.columns.forEach(col => {
+                if (col.hidden) return;
                 if (col.adminOnly && !Auth.isAdmin()) return;
                 if (!this.distribusiVisible && col.key === 'distribusi') return;
 
@@ -1137,7 +1171,7 @@ const PriceList = {
                 // Numeric formats for prices and stock
                 if (R >= 3 && cell.t === 'n' && headerCell) {
                     const h = headerCell.v;
-                    if (h.includes('Harga') || h === 'Distribusi' || h === 'Total' || h === 'Harco' || h === 'Serpong') {
+                    if (h.includes('Harga') || h === 'Distribusi' || h === 'SRP' || h === 'Total' || h === 'Harco' || h === 'Serpong') {
                         cell.z = '#,##0'; // format number with thousand separator
                     }
                 }
@@ -1152,10 +1186,10 @@ const PriceList = {
                 ws['!cols'].push({ wch: 5 });
             } else if (headerCell && headerCell.v === 'Deskripsi / Nama Barang') {
                 ws['!cols'].push({ wch: Math.min(maxDescWidth + 2, 120) }); // cap at 120
-            } else if (headerCell && (headerCell.v.includes('Harga') || headerCell.v === 'Distribusi')) {
+            } else if (headerCell && (headerCell.v.includes('Harga') || headerCell.v === 'Distribusi' || headerCell.v === 'SRP')) {
                 ws['!cols'].push({ wch: 15 });
             } else {
-                ws['!cols'].push({ wch: 10 }); // stocks
+                ws['!cols'].push({ wch: 10 }); // stocks and hidden cols like SKU
             }
         }
 
@@ -1342,6 +1376,55 @@ const Upload = {
 
     async render() {
         document.getElementById('upload-date').value = getEffectiveDate();
+        await this.renderHistory();
+    },
+
+    async renderHistory() {
+        const tbody = document.getElementById('upload-history-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Memuat riwayat...</td></tr>';
+        
+        try {
+            const dates = await DB.getAvailableDates();
+            if (dates.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-muted);">Belum ada data yang diupload</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = dates.map(date => `
+                <tr>
+                    <td style="font-weight: 500;">${formatDate(date)}</td>
+                    <td><span class="badge badge-success" style="background: var(--success); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em;">Tersedia</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-danger btn-delete-history" data-date="${date}">Hapus</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.querySelectorAll('.btn-delete-history').forEach(btn => {
+                btn.onclick = async (e) => {
+                    const dateStr = e.target.dataset.date;
+                    if (confirm(`Yakin ingin menghapus semua data pada tanggal ${formatDate(dateStr)}? Data yang dihapus tidak bisa dikembalikan.`)) {
+                        try {
+                            e.target.disabled = true;
+                            e.target.innerText = 'Menghapus...';
+                            await DB.deleteData(dateStr);
+                            showToast(`Data tanggal ${formatDate(dateStr)} berhasil dihapus`, 'success');
+                            await this.renderHistory();
+                            await Dashboard.render();
+                        } catch (err) {
+                            showToast('Gagal menghapus data: ' + err.message, 'error');
+                            e.target.disabled = false;
+                            e.target.innerText = 'Hapus';
+                        }
+                    }
+                };
+            });
+
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--danger);">Gagal memuat riwayat: ${err.message}</td></tr>`;
+        }
     },
 
     init() {
@@ -1417,6 +1500,7 @@ const Upload = {
             document.getElementById('file-input').value = '';
 
             await Dashboard.render();
+            await this.renderHistory();
 
         } catch (err) {
             showToast(err, 'error');

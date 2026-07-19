@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=18">
+    <link rel="stylesheet" href="style.css?v=19">
 </head>
 
 <body>
@@ -103,6 +103,28 @@
                             <button id="btn-upload" class="btn btn-primary" disabled>⬆️ Upload &amp; Proses</button>
                         </div>
                         <div id="upload-status"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card mt-2">
+                    <div class="card-header">
+                        <h2>📋 Riwayat Upload Data</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table id="upload-history-table" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal Data</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="upload-history-body">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -264,7 +286,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=18"></script>
+    <script src="app.js?v=19"></script>
 </body>
 
 </html>
