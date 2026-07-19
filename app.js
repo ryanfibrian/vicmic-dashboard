@@ -831,6 +831,12 @@ const PriceList = {
         };
 
         let rawData = await DB.getData(targetDate);
+        let prevDataObj = await DB.getPreviousData(targetDate);
+        let prevDataMap = new Map();
+        if (prevDataObj && prevDataObj.data) {
+            prevDataObj.data.forEach(p => prevDataMap.set(p.deskripsi.toLowerCase(), p));
+        }
+
         if (!rawData) {
             // Fallback: cari data terbaru yang tersedia
             const latest = await DB.getLatestData();
@@ -841,11 +847,18 @@ const PriceList = {
                 rawData = [];
             }
         }
-        this.data = rawData.map(p => ({
-            ...p,
-            hargaOnline: PriceCalc.hargaOnline(p.distribusi),
-            hargaOffline: PriceCalc.hargaOffline(p.distribusi)
-        }));
+        this.data = rawData.map(p => {
+            const prev = prevDataMap.get(p.deskripsi.toLowerCase());
+            return {
+                ...p,
+                hargaOnline: PriceCalc.hargaOnline(p.distribusi),
+                hargaOffline: PriceCalc.hargaOffline(p.distribusi),
+                isNew: !prev,
+                prevDistribusi: prev ? prev.distribusi : null,
+                prevHargaOnline: prev ? PriceCalc.hargaOnline(prev.distribusi) : null,
+                prevHargaOffline: prev ? PriceCalc.hargaOffline(prev.distribusi) : null
+            };
+        });
 
         this.renderHeader();
         this.applyFiltersAndSort();
@@ -954,8 +967,31 @@ const PriceList = {
 
                 let val = item[col.key];
                 let displayVal = val;
-                if (col.type === 'currency') displayVal = formatCurrency(val);
-                else if (col.type === 'number') displayVal = formatNumber(val);
+                
+                if (col.type === 'currency') {
+                    displayVal = formatCurrency(val);
+                    
+                    let prevKey = col.key === 'distribusi' ? 'prevDistribusi' : 
+                                  col.key === 'hargaOnline' ? 'prevHargaOnline' : 
+                                  col.key === 'hargaOffline' ? 'prevHargaOffline' : null;
+                                  
+                    if (prevKey && item[prevKey] !== null) {
+                        let prevVal = item[prevKey];
+                        if (val > prevVal) {
+                            let diff = val - prevVal;
+                            displayVal = `<span style="color: var(--success); font-weight: 600;">${displayVal} <small style="margin-left: 4px;">&#9650; +${formatCurrency(diff)}</small></span>`;
+                        } else if (val < prevVal) {
+                            let diff = prevVal - val;
+                            displayVal = `<span style="color: var(--danger); font-weight: 600;">${displayVal} <small style="margin-left: 4px;">&#9660; -${formatCurrency(diff)}</small></span>`;
+                        }
+                    }
+                } else if (col.type === 'number') {
+                    displayVal = formatNumber(val);
+                }
+
+                if (col.key === 'deskripsi' && item.isNew) {
+                    displayVal = `<span class="badge-new-blink">BARU</span> ` + displayVal;
+                }
 
                 let cls = col.class ? ` class="${col.class}"` : '';
                 rowHtml += `<td${cls}>${displayVal}</td>`;

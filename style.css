@@ -930,6 +930,32 @@ body {
   color: var(--accent);
 }
 
+.badge-new-blink {
+  background-color: var(--success);
+  color: #fff;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  display: inline-block;
+  vertical-align: middle;
+  animation: pulseNew 1.5s infinite;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  margin-right: 0.3rem;
+}
+
+@keyframes pulseNew {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+
 /* ==========================================================================
    18. Report Tabs
    ========================================================================== */
