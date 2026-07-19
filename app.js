@@ -1030,23 +1030,40 @@ const Dashboard = {
 
         const brandNames = Object.keys(brandsData);
         
-        const colors = [
-            '#4F46E5', '#10B981', '#F59E0B', '#EF4444', 
-            '#8B5CF6', '#EC4899', '#06B6D4', '#F97316',
-            '#14B8A6', '#84CC16', '#6366F1', '#3B82F6',
-            '#EAB308', '#0EA5E9', '#D946EF', '#64748B'
-        ];
+        const brandColors = {
+            'ACER': '#10B981',  // Hijau
+            'ASUS': '#1E3A8A',  // Biru Tua
+            'AXIOO': '#EAB308', // Kuning
+            'HP': '#38BDF8',    // Biru Muda
+            'LENOVO': '#EF4444',// Merah
+            'MSI': '#F8FAFC'    // Putih (sedikit off-white agar terlihat)
+        };
 
-        const datasets = brandNames.map((brand, i) => ({
-            label: brand,
-            data: brandsData[brand],
-            borderColor: colors[i % colors.length],
-            backgroundColor: colors[i % colors.length],
-            borderWidth: 2,
-            tension: 0.3,
-            pointRadius: 4,
-            pointHoverRadius: 6
-        }));
+        const defaultColors = [
+            '#8B5CF6', '#EC4899', '#06B6D4', '#F97316',
+            '#14B8A6', '#84CC16', '#6366F1', '#D946EF', '#64748B'
+        ];
+        
+        let defaultColorIndex = 0;
+
+        const datasets = brandNames.map((brand) => {
+            let color = brandColors[brand];
+            if (!color) {
+                color = defaultColors[defaultColorIndex % defaultColors.length];
+                defaultColorIndex++;
+            }
+            
+            return {
+                label: brand,
+                data: brandsData[brand],
+                borderColor: color,
+                backgroundColor: color,
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            };
+        });
 
         const ctx = document.getElementById('brandChart');
         if (!ctx) return;
