@@ -113,6 +113,27 @@ function hideModal() {
 
 // 4. DATABASE MODULE (Supabase Version)
 const DB = {
+    // ---- SETTINGS ----
+    async getSettings() {
+        const { data, error } = await supabaseClient
+            .from('app_settings')
+            .select('*');
+        if (error) {
+            console.error('Failed to get settings:', error);
+            return [];
+        }
+        return data;
+    },
+    async saveSetting(key, value) {
+        const { data, error } = await supabaseClient
+            .from('app_settings')
+            .upsert({ setting_key: key, setting_value: value }, { onConflict: 'setting_key' });
+        if (error) {
+            throw error;
+        }
+        return data;
+    },
+
     // ---- USER MANAGEMENT ----
     async getUsers() {
         const { data, error } = await supabaseClient
@@ -299,7 +320,7 @@ const Auth = {
         if (saved) {
             this.currentUser = JSON.parse(saved);
             if (await this.verifyUser(this.currentUser.email)) {
-                this.onLoginSuccess();
+                await this.onLoginSuccess();
                 return;
             }
         }
@@ -418,10 +439,10 @@ const Auth = {
 
         this.currentUser = { email, name, picture, role: user.role, isSuperAdmin: user.isSuperAdmin || false };
         sessionStorage.setItem('vicmic_session', JSON.stringify(this.currentUser));
-        this.onLoginSuccess();
+        await this.onLoginSuccess();
     },
 
-    onLoginSuccess() {
+    async onLoginSuccess() {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('app-shell').style.display = '';
 
@@ -450,6 +471,7 @@ const Auth = {
             PriceList.distribusiVisible = true;
         }
 
+        await PriceCalc.loadFormulas();
         Router.init();
     },
 
@@ -529,6 +551,7 @@ const Router = {
             case 'reports': await Reports.render(); break;
             case 'users': await UserManagement.render(); break;
             case 'upload': await Upload.render(); break;
+            case 'settings': await Settings.render(); break;
         }
     }
 };
@@ -645,22 +668,124 @@ const ExcelParser = {
     }
 };
 
-// 8. PRICE CALCULATOR
+// 8. PRICE CALCULATOR & SETTINGS MODULE
 const PriceCalc = {
+    _onlineFormula: null,
+    _offlineFormula: null,
+
+    async loadFormulas() {
+        const settings = await DB.getSettings();
+        if (settings && settings.length > 0) {
+            settings.forEach(s => {
+                if (s.setting_key === 'formula_online') {
+                    this._onlineFormula = s.setting_value;
+                } else if (s.setting_key === 'formula_offline') {
+                    this._offlineFormula = s.setting_value;
+                }
+            });
+        }
+    },
+
     hargaOnline(h) {
         if (!h || h <= 0) return 0;
-        const base = h * 1.015;
-        let raw;
-        if ((base + 106310) / 0.9125 > 16250000) {
-            raw = (base + 1250 + 5060 + 650000 + 60000) / 0.9525;
-        } else {
-            raw = (base + 1250 + 5060 + 60000) / 0.9125;
+        if (this._onlineFormula) {
+            try {
+                const func = new Function('h', this._onlineFormula);
+                return func(h);
+            } catch (e) {
+                console.error("Error executing Online Formula:", e);
+                return 0;
+            }
         }
-        return Math.ceil(raw / 10000) * 10000 - 2000;
+        // Fallback
+        return 0;
     },
     hargaOffline(h) {
         if (!h || h <= 0) return 0;
-        return Math.round(h * 1.11);
+        if (this._offlineFormula) {
+            try {
+                const func = new Function('h', this._offlineFormula);
+                return func(h);
+            } catch (e) {
+                console.error("Error executing Offline Formula:", e);
+                return 0;
+            }
+        }
+        // Fallback
+        return 0;
+    }
+};
+
+const Settings = {
+    async render() {
+        // Fetch current formulas from DB (or use the one in PriceCalc)
+        await PriceCalc.loadFormulas();
+        
+        const inputOnline = document.getElementById('input-formula-online');
+        const inputOffline = document.getElementById('input-formula-offline');
+        const btnSave = document.getElementById('btn-save-formulas');
+        
+        inputOnline.value = PriceCalc._onlineFormula || '';
+        inputOffline.value = PriceCalc._offlineFormula || '';
+        
+        // Remove previous listeners if any (clone node technique)
+        const newBtn = btnSave.cloneNode(true);
+        btnSave.parentNode.replaceChild(newBtn, btnSave);
+        
+        let countdownInterval = null;
+        let countdownValue = 5;
+        let isConfirming = false;
+        
+        newBtn.addEventListener('click', async () => {
+            if (!isConfirming) {
+                // First click: start countdown
+                isConfirming = true;
+                countdownValue = 5;
+                newBtn.textContent = `Ya, Simpan Perubahan (${countdownValue})`;
+                newBtn.classList.remove('btn-primary');
+                newBtn.style.backgroundColor = 'var(--danger)';
+                newBtn.style.color = 'white';
+                newBtn.style.border = 'none';
+                newBtn.style.opacity = '0.7';
+                newBtn.style.cursor = 'not-allowed';
+                
+                countdownInterval = setInterval(() => {
+                    countdownValue--;
+                    if (countdownValue > 0) {
+                        newBtn.textContent = `Ya, Simpan Perubahan (${countdownValue})`;
+                    } else {
+                        clearInterval(countdownInterval);
+                        newBtn.textContent = `Ya, Konfirmasi Simpan!`;
+                        newBtn.style.opacity = '1';
+                        newBtn.style.cursor = 'pointer';
+                    }
+                }, 1000);
+            } else if (countdownValue <= 0) {
+                // Second click (after countdown): perform save
+                isConfirming = false;
+                newBtn.textContent = 'Menyimpan...';
+                newBtn.style.cursor = 'wait';
+                newBtn.style.opacity = '0.7';
+                
+                try {
+                    await DB.saveSetting('formula_online', inputOnline.value);
+                    await DB.saveSetting('formula_offline', inputOffline.value);
+                    await PriceCalc.loadFormulas(); // Reload into memory
+                    showToast('Rumus berhasil diperbarui!', 'success');
+                } catch (e) {
+                    showToast('Gagal menyimpan rumus: ' + e.message, 'error');
+                }
+                
+                // Reset button
+                newBtn.textContent = '💾 Ubah Rumus';
+                newBtn.style.backgroundColor = '';
+                newBtn.style.color = '';
+                newBtn.style.border = '';
+                newBtn.classList.add('btn-primary');
+                newBtn.style.cursor = 'pointer';
+                newBtn.style.opacity = '1';
+            }
+        });
     }
 };
 

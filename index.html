@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=27">
+    <link rel="stylesheet" href="style.css?v=28">
 </head>
 
 <body>
@@ -68,7 +68,10 @@
                     <span class="nav-icon">👥</span><span class="nav-text">User Management</span>
                 </li>
                 <li class="nav-item admin-only" data-page="upload">
-                    <span class="nav-icon">⬆️</span><span class="nav-text">Upload Data</span>
+                    <span class="nav-icon">📁</span><span class="nav-text">Upload Data</span>
+                </li>
+                <li class="nav-item admin-only" data-page="settings">
+                    <span class="nav-icon">⚙️</span><span class="nav-text">Pengaturan Rumus</span>
                 </li>
             </ul>
             <div class="sidebar-footer">
@@ -264,6 +267,37 @@
                 </div>
             </section>
 
+            <!-- ========== SETTINGS PAGE ========== -->
+            <section id="page-settings" class="page admin-only">
+                <div class="page-header">
+                    <h1>⚙️ Pengaturan Rumus</h1>
+                </div>
+                <div class="glass-card" style="max-width: 800px;">
+                    <div class="card-header">
+                        <h2>🛠️ Konfigurasi Rumus Harga</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="margin-bottom: 1.5rem; font-size: 0.9rem;">
+                            Ubah rumus perhitungan Harga Online dan Harga Offline menggunakan kode JavaScript. 
+                            Variabel <code style="background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">h</code> adalah nilai dari Harga Distribusi.
+                        </p>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Rumus Harga Online</label>
+                            <textarea id="input-formula-online" class="input-field" style="width: 100%; min-height: 150px; font-family: monospace; white-space: pre; overflow-wrap: normal; overflow-x: auto;" placeholder="return h * 1.015;"></textarea>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Rumus Harga Offline</label>
+                            <textarea id="input-formula-offline" class="input-field" style="width: 100%; min-height: 100px; font-family: monospace; white-space: pre; overflow-wrap: normal; overflow-x: auto;" placeholder="return Math.round(h * 1.11);"></textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                            <button id="btn-save-formulas" class="btn btn-primary" style="flex: 1;">💾 Ubah Rumus</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -286,7 +320,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
 </body>
 
 </html>
