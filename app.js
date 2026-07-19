@@ -826,7 +826,7 @@ const Dashboard = {
 
         this.renderKPIs(data, prevData);
         this.renderPriceAlerts(data, prevData);
-        await this.renderStockUrgency(data, currentDateStr);
+        this.renderRecommendations(data);
     },
 
     renderKPIs(data, prevData) {
@@ -922,93 +922,63 @@ const Dashboard = {
             }).join('');
     },
 
-    async renderStockUrgency(data, currentDateStr) {
-        const container = document.getElementById('stock-urgency-list');
-        const allDates = await DB.getAllDates();
-        const dates = allDates.filter(d => d <= currentDateStr).slice(0, 7);
-        if (dates.length < 2) {
-            container.innerHTML = '<div class="empty-state">Belum ada data historis yang cukup</div>';
-            return;
+    renderRecommendations(data) {
+        const pullSerpong = [];
+        const returnHarco = [];
+        
+        data.forEach(item => {
+            const srp = parseFloat(item.serpong) || 0;
+            const hrc = parseFloat(item.harco) || 0;
+            
+            // Rekomendasi Tarik ke Serpong: serpong <= 1 AND harco > 10
+            if (srp <= 1 && hrc > 10) {
+                pullSerpong.push(item);
+            }
+            
+            // Rekomendasi Retur ke Harco: harco < 5 AND serpong > 0
+            if (hrc < 5 && srp > 0) {
+                returnHarco.push(item);
+            }
+        });
+        
+        const renderRow = (item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td style="text-align: left;">${item.deskripsi}</td>
+                <td style="text-align: right;">${item.serpong || 0}</td>
+                <td style="text-align: right;">${item.harco || 0}</td>
+                <td style="text-align: center;">
+                    <button class="btn btn-sm btn-secondary btn-copy" data-text="${item.deskripsi}" title="Copy Deskripsi" style="padding: 2px 6px;">📋</button>
+                </td>
+            </tr>
+        `;
+        
+        const tbodyPull = document.getElementById('pull-serpong-body');
+        if (pullSerpong.length === 0) {
+            tbodyPull.innerHTML = '<tr><td colspan="5" style="text-align:center">Tidak ada rekomendasi tarik ke serpong</td></tr>';
+        } else {
+            tbodyPull.innerHTML = pullSerpong.map((item, i) => renderRow(item, i)).join('');
         }
-
-        const histories = [];
-        for (const d of dates) {
-            histories.push(await DB.getData(d));
+        
+        const tbodyReturn = document.getElementById('return-harco-body');
+        if (returnHarco.length === 0) {
+            tbodyReturn.innerHTML = '<tr><td colspan="5" style="text-align:center">Tidak ada rekomendasi retur ke harco</td></tr>';
+        } else {
+            tbodyReturn.innerHTML = returnHarco.map((item, i) => renderRow(item, i)).join('');
         }
-        const urgencies = [];
-
-        data.forEach(p => {
-            const desc = p.deskripsi.toLowerCase();
-            let totalDecrease = 0;
-            let decreaseDays = 0;
-
-            for (let i = 0; i < histories.length - 1; i++) {
-                const currentDayData = histories[i];
-                const prevDayData = histories[i + 1];
-                if (!currentDayData || !prevDayData) continue;
-
-                const currentItem = currentDayData.find(item => item.deskripsi.toLowerCase() === desc);
-                const prevItem = prevDayData.find(item => item.deskripsi.toLowerCase() === desc);
-
-                if (currentItem && prevItem) {
-                    if (prevItem.total > currentItem.total) {
-                        totalDecrease += (prevItem.total - currentItem.total);
-                        decreaseDays++;
-                    }
+        
+        // Setup copy buttons
+        document.querySelectorAll('#page-dashboard .btn-copy').forEach(btn => {
+            btn.onclick = async (e) => {
+                const text = e.target.dataset.text;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast('Tersalin: ' + text, 'success');
+                } catch (err) {
+                    showToast('Gagal menyalin', 'error');
                 }
-            }
-
-            const dailyRate = decreaseDays > 0 ? totalDecrease / decreaseDays : 0;
-            const daysLeft = dailyRate > 0 ? p.total / dailyRate : Infinity;
-
-            let status = 'safe';
-            let label = 'STOK AMAN';
-            let color = 'var(--success-color)';
-
-            if (p.total === 0 || daysLeft < 3) {
-                status = 'restock';
-                label = 'RE-STOCK NOW';
-                color = 'var(--danger-color)';
-            } else if (daysLeft <= 14) {
-                status = 'critical';
-                label = 'STOK KRITIS';
-                color = 'var(--warning-color)';
-            }
-
-            if (status !== 'safe') {
-                urgencies.push({
-                    deskripsi: p.deskripsi,
-                    total: p.total,
-                    dailyRate,
-                    daysLeft,
-                    status,
-                    label,
-                    color
-                });
-            }
+            };
         });
-
-        urgencies.sort((a, b) => {
-            if (a.status === 'restock' && b.status !== 'restock') return -1;
-            if (b.status === 'restock' && a.status !== 'restock') return 1;
-            return a.daysLeft - b.daysLeft;
-        });
-
-        if (urgencies.length === 0) {
-            container.innerHTML = '<div class="empty-state">Semua stok aman</div>';
-            return;
-        }
-
-        container.innerHTML = `<div class="alert-count">${urgencies.length} produk perlu perhatian</div>` +
-            urgencies.slice(0, 30).map(u =>
-                `<div class="stock-item">
-                    <div class="stock-info">
-                        <span class="stock-name">${u.deskripsi}</span>
-                        <span class="stock-detail">Stok: ${formatNumber(u.total)} | ~${u.dailyRate.toFixed(1)}/hari | Est. ${u.daysLeft === Infinity ? '∞' : Math.floor(u.daysLeft)} hari</span>
-                    </div>
-                    <span class="badge badge-${u.status}">${u.label}</span>
-                </div>`
-            ).join('');
     }
 };
 
