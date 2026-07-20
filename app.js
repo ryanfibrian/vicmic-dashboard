@@ -1190,6 +1190,8 @@ const Dashboard = {
             window.brandChartInstance.destroy();
         }
 
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+
         window.brandChartInstance = new Chart(ctx.getContext('2d'), {
             type: 'line',
             data: {
@@ -1203,7 +1205,7 @@ const Dashboard = {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#e2e8f0',
+                            color: textColor,
                             font: { family: "'Inter', sans-serif", size: 11 },
                             boxWidth: 12,
                             padding: 15
@@ -1212,22 +1214,22 @@ const Dashboard = {
                     tooltip: {
                         mode: 'index',
                         intersect: false,
-                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                        titleColor: '#e2e8f0',
-                        bodyColor: '#e2e8f0',
-                        borderColor: 'rgba(255,255,255,0.1)',
+                        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary').trim(),
+                        titleColor: textColor,
+                        bodyColor: textColor,
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
                         borderWidth: 1
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#94a3b8' }
+                        grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() },
+                        ticks: { color: textColor }
                     },
                     x: {
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#94a3b8' }
+                        grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() },
+                        ticks: { color: textColor }
                     }
                 },
                 interaction: {
@@ -2083,6 +2085,25 @@ const Upload = {
 
 // 14. APP INITIALIZATION
 document.addEventListener('DOMContentLoaded', async () => {
+    // Theme Management
+    const savedTheme = localStorage.getItem('vicmic_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) {
+        themeSelect.value = savedTheme;
+        themeSelect.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('vicmic_theme', theme);
+            
+            // Re-render chart if it exists on dashboard
+            const dateInput = document.getElementById('brand-chart-date');
+            if (window.brandChartInstance && dateInput) {
+                App.renderBrandChart(dateInput.value);
+            }
+        });
+    }
+
     // Cleanup old data on load (> 60 days)
     await DB.cleanupOldData(60);
 

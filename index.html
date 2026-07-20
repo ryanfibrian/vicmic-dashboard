@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=57">
+    <link rel="stylesheet" href="style.css?v=58">
 </head>
 
 <body>
@@ -75,6 +75,15 @@
                 </li>
             </ul>
             <div class="sidebar-footer">
+                <div class="theme-selector" style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.8em; color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-weight: 500;">🎨 Pilihan Tema</label>
+                    <select id="theme-select" style="width: 100%; font-size: 0.85em; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: var(--radius-sm); padding: 8px; outline: none; cursor: pointer;">
+                        <option value="dark">Premium Dark (Default)</option>
+                        <option value="light">Light Clean</option>
+                        <option value="midnight">Midnight Violet</option>
+                        <option value="nature">Nature Green</option>
+                    </select>
+                </div>
                 <button id="btn-logout" class="btn btn-logout">🚪 Logout</button>
             </div>
         </nav>
@@ -404,7 +413,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=57"></script>
+    <script src="app.js?v=58"></script>
 </body>
 
 </html>
