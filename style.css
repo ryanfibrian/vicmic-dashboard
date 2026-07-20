@@ -1449,6 +1449,56 @@ body.role-sales .admin-only {
 }
 
 /* ==========================================================================
+   21. Animations
+   ========================================================================== */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ==========================================================================
+   22. Mobile Collapsible Cards
+   ========================================================================== */
+.mobile-collapse-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.3s ease;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .mobile-collapsible {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-collapsible:active {
+    background-color: var(--hover-bg);
+  }
+  .mobile-collapse-toggle {
+    display: inline-block;
+  }
+  .mobile-collapsible.collapsed .mobile-collapse-toggle {
+    transform: rotate(90deg); /* Rotates the ▼ to point right */
+  }
+  .mobile-collapsible.collapsed + .card-body {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
    25. Keyframe Animations
    ========================================================================== */
 @keyframes fadeIn {

@@ -2107,6 +2107,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Cleanup old data on load (> 60 days)
     await DB.cleanupOldData(60);
 
+    // Mobile Collapsible Cards
+    document.querySelectorAll('.mobile-collapsible').forEach(header => {
+        header.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                // Jangan collapse kalau klik elemen select (chart timeframe)
+                if (e.target.tagName.toLowerCase() === 'select' || e.target.tagName.toLowerCase() === 'option') {
+                    return;
+                }
+                header.classList.toggle('collapsed');
+            }
+        });
+    });
+
     // Register Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
