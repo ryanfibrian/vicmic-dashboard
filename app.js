@@ -1082,7 +1082,7 @@ const Dashboard = {
             <tr>
                 <td style="text-align: left;" class="col-deskripsi">
                     ${item.deskripsi}
-                    <button class="btn btn-sm btn-secondary btn-copy" data-text="${item.deskripsi}" title="Copy Deskripsi" style="padding: 0 4px; margin-left: 5px; font-size: 0.8em; border: none; background: transparent;">📋</button>
+                    <button class="btn btn-sm btn-secondary btn-copy" data-text="${item.deskripsi.replace(/"/g, '&quot;')}" title="Copy Deskripsi" style="padding: 0 4px; margin-left: 5px; font-size: 0.8em; border: none; background: transparent;">📋</button>
                 </td>
                 <td style="text-align: right;">${item.serpong || 0}</td>
                 <td style="text-align: right;">${item.harco || 0}</td>
