@@ -2681,24 +2681,6 @@ const Courier = {
 
 // 14. APP INITIALIZATION
 document.addEventListener('DOMContentLoaded', async () => {
-    // Theme Management
-    const savedTheme = localStorage.getItem('vicmic_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    const themeSelect = document.getElementById('theme-select');
-    if (themeSelect) {
-        themeSelect.value = savedTheme;
-        themeSelect.addEventListener('change', (e) => {
-            const theme = e.target.value;
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('vicmic_theme', theme);
-            
-            // Re-render chart if it exists on dashboard
-            const dateInput = document.getElementById('brand-chart-date');
-            if (window.brandChartInstance && dateInput) {
-                App.renderBrandChart(dateInput.value);
-            }
-        });
-    }
 
     // Cleanup old data on load (> 60 days)
     await DB.cleanupOldData(60);
