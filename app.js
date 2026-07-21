@@ -2161,6 +2161,30 @@ const Courier = {
 
     async saveLog() {
         try {
+            const btn = document.querySelector('#courier-form button[type="submit"]');
+            const originalText = btn ? btn.innerHTML : '🚀 Mulai Jalan';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = 'Menyimpan...';
+            }
+
+            // Validasi: Cek apakah ada perjalanan yang masih sedang jalan
+            const { data: activeLogs, error: checkError } = await supabaseClient.from('courier_logs')
+                .select('id')
+                .eq('user_email', Auth.currentUser.email)
+                .eq('status', 'sedang jalan');
+                
+            if (checkError) throw checkError;
+                
+            if (activeLogs && activeLogs.length > 0) {
+                showToast('Anda masih memiliki perjalanan yang sedang jalan! Selesaikan terlebih dahulu.', 'warning');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+                return;
+            }
+
             const fromVal = document.getElementById('courier-from').value;
             const toVal = document.getElementById('courier-to').value;
             let distVal = document.getElementById('courier-distance').value;
@@ -2271,8 +2295,9 @@ const Courier = {
 
         if (Auth.isAdmin()) {
             const filterEl = document.getElementById('filter-courier-user');
-            if (filterEl.options.length <= 1) { 
-                filterEl.style.display = '';
+            const filterWrapper = document.getElementById('admin-courier-filter-wrapper');
+            if (filterEl && filterEl.options.length <= 1) { 
+                if (filterWrapper) filterWrapper.style.display = 'block';
                 const uniqueEmails = [...new Set(data.map(log => log.user_email))];
                 filterEl.innerHTML = `<option value="">-- Semua Kurir --</option>` + 
                                      uniqueEmails.map(e => `<option value="${e}">${e}</option>`).join('');
@@ -2312,20 +2337,24 @@ const Courier = {
                     totalRp += log.amount_rp;
                 }
                 
+                const startDateStr = log.start_time ? new Date(log.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+                const endDateStr = log.end_time ? new Date(log.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+                const dateStr = log.date ? new Date(log.date).toLocaleDateString('id-ID') : '-';
+
                 let statusHtml = '';
                 let actionHtml = '';
+                let timerHtml = '-';
                 
                 if (log.status === 'sedang jalan') {
-                    statusHtml = `<span style="display:inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255, 193, 7, 0.2); color: #ff9800; font-size: 0.85em; font-weight: bold; border: 1px solid #ff9800;">Sedang Jalan</span>
-                                  <div style="font-family: monospace; font-size: 1.1em; margin-top: 5px; color: var(--text-primary);" class="courier-timer" data-start="${log.start_time}">00:00:00</div>`;
-                                  
+                    statusHtml = `<span style="display:inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255, 193, 7, 0.2); color: #ff9800; font-size: 0.85em; font-weight: bold; border: 1px solid #ff9800;">Sedang Jalan</span>`;
+                    timerHtml = `<div style="font-family: monospace; font-size: 1.1em; color: var(--text-primary);" class="courier-timer" data-start="${log.start_time}">00:00:00</div>`;
                     if (Auth.currentUser.email === log.user_email) {
                         actionHtml += `<button class="btn btn-sm btn-primary" onclick="Courier.finishLog('${log.id}')" style="margin-right: 5px; margin-bottom: 5px;">✅ Selesai</button>`;
                     }
                 } else {
                     const duration = this.formatDuration(log.start_time, log.end_time);
-                    statusHtml = `<span style="display:inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(76, 175, 80, 0.2); color: #4caf50; font-size: 0.85em; font-weight: bold; border: 1px solid #4caf50;">Selesai</span>
-                                  <div style="font-size: 0.9em; margin-top: 5px; color: var(--text-secondary);">⏱️ ${duration}</div>`;
+                    statusHtml = `<span style="display:inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(76, 175, 80, 0.2); color: #4caf50; font-size: 0.85em; font-weight: bold; border: 1px solid #4caf50;">Selesai</span>`;
+                    timerHtml = `<div style="font-size: 0.9em; color: var(--text-secondary);">⏱️ ${duration}</div>`;
                 }
 
                 if (Auth.isAdmin()) {
@@ -2334,15 +2363,18 @@ const Courier = {
                 
                 actionHtml += `<button class="btn btn-sm btn-danger" onclick="Courier.deleteLog('${log.id}')">Hapus</button>`;
                 
+                let userEmailHtml = Auth.isAdmin() ? `<br><small style="color:var(--accent)">${log.user_email}</small>` : '';
+
                 return `
                 <tr data-email="${log.user_email}" data-km="${log.distance_km}" data-rp="${log.amount_rp}" data-status="${log.status || 'selesai'}">
-                    <td>
-                        ${statusHtml}
-                        <br><small style="color:var(--accent)">${Auth.isAdmin() ? log.user_email : new Date(log.start_time || log.date).toLocaleDateString('id-ID')}</small>
-                    </td>
-                    <td><div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.from_location}">${log.from_location}</div></td>
-                    <td><div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.to_location}">${log.to_location}</div></td>
+                    <td>${dateStr}${userEmailHtml}</td>
+                    <td>${startDateStr}</td>
+                    <td>${endDateStr}</td>
+                    <td><div style="max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.from_location}">${log.from_location}</div></td>
+                    <td><div style="max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.to_location}">${log.to_location}</div></td>
                     <td>${log.distance_km} KM</td>
+                    <td>${statusHtml}</td>
+                    <td>${timerHtml}</td>
                     <td style="color: var(--success);">${isSelesai ? formatCurrency(log.amount_rp) : '-'}</td>
                     <td style="text-align: right; white-space: nowrap;">
                         ${actionHtml}

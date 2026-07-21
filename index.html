@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=69">
+    <link rel="stylesheet" href="style.css?v=70">
 </head>
 
 <body>
@@ -443,9 +443,9 @@
                                     <div class="kpi-value" id="rekap-komisi" style="color: var(--success);">Rp 0</div>
                                 </div>
                             </div>
-                            <div style="margin-top: 1rem;">
+                            <div id="admin-courier-filter-wrapper" style="margin-top: 1rem; display: none;">
                                 <label style="font-size: 0.85em; color: var(--text-secondary);">Pilih Kurir (Khusus Admin):</label>
-                                <select id="filter-courier-user" class="input-field" style="width: 100%; padding: 6px; margin-top: 4px; display: none;">
+                                <select id="filter-courier-user" class="input-field" style="width: 100%; padding: 6px; margin-top: 4px;">
                                 </select>
                             </div>
                         </div>
@@ -461,12 +461,16 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th width="150">Status / Waktu</th>
+                                        <th>Date</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
                                         <th>Asal</th>
                                         <th>Tujuan</th>
                                         <th width="80">Jarak</th>
+                                        <th>Status</th>
+                                        <th>Timer</th>
                                         <th width="100">Komisi</th>
-                                        <th width="150" style="text-align: right;">Aksi</th>
+                                        <th width="120" style="text-align: right;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="courier-table-body">
@@ -526,7 +530,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=69"></script>
+    <script src="app.js?v=70"></script>
 </body>
 
 </html>
