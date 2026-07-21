@@ -478,6 +478,12 @@ const Auth = {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('app-shell').style.display = '';
 
+        if (this.isAdmin()) {
+            document.getElementById('admin-filters').style.display = 'flex';
+            document.getElementById('admin-courier-filter-wrapper').style.display = 'block';
+            document.getElementById('admin-courier-actions').style.display = 'flex';
+        }
+
         // Set user info in sidebar
         document.getElementById('user-name').textContent = this.currentUser.name || this.currentUser.email;
         const avatar = document.getElementById('user-avatar');
@@ -2472,6 +2478,159 @@ const Courier = {
         } catch (e) {
             console.error('Error cleaning up old courier logs:', e);
         }
+    },
+
+    exportToExcel() {
+        const tbody = document.querySelector('#courier-table-body');
+        if (!tbody || tbody.children.length === 0 || tbody.innerHTML.includes('Belum ada')) {
+            showToast('Tidak ada data untuk diexport', 'error');
+            return;
+        }
+
+        const data = [];
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(tr => {
+            if (tr.children.length < 8) return;
+            const emailText = tr.getAttribute('data-email') || '';
+            const statusText = tr.getAttribute('data-status') || '';
+            
+            data.push({
+                'Date': tr.children[0].textContent.replace(emailText, '').trim(),
+                'Email Kurir': emailText,
+                'Start Time': tr.children[1].textContent.trim(),
+                'End Time': tr.children[2].textContent.trim(),
+                'Asal': tr.children[3].textContent.trim(),
+                'Tujuan': tr.children[4].textContent.trim(),
+                'Jarak (KM)': parseFloat(tr.getAttribute('data-km') || 0),
+                'Status': statusText,
+                'Timer': tr.children[7].textContent.trim(),
+                'Komisi (Rp)': parseInt(tr.getAttribute('data-rp') || 0)
+            });
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Riwayat Kurir");
+        const monthYear = document.getElementById('filter-month').value || new Date().toISOString().slice(0, 7);
+        XLSX.writeFile(wb, `Vicmic_Kurir_${monthYear}.xlsx`);
+    },
+
+    importExcel(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                if (jsonData.length === 0) {
+                    showToast('File Excel kosong', 'error');
+                    return;
+                }
+                
+                const getCol = (row, names) => {
+                    for (const name of names) {
+                        for (const key of Object.keys(row)) {
+                            if (key.toLowerCase().includes(name.toLowerCase())) return row[key];
+                        }
+                    }
+                    return '';
+                };
+
+                const parseTime = (timeStr, baseDateStr) => {
+                    if (!timeStr) return baseDateStr + 'T00:00:00Z';
+                    if (typeof timeStr === 'number') {
+                        const totalSeconds = Math.round(timeStr * 24 * 3600);
+                        const h = Math.floor(totalSeconds / 3600);
+                        const m = Math.floor((totalSeconds % 3600) / 60);
+                        const s = totalSeconds % 60;
+                        const pad = n => String(n).padStart(2, '0');
+                        return `${baseDateStr}T${pad(h)}:${pad(m)}:${pad(s)}.000Z`;
+                    }
+                    try {
+                        const d = new Date(`${baseDateStr} ${timeStr}`);
+                        if (!isNaN(d)) return d.toISOString();
+                    } catch (err) {}
+                    return baseDateStr + 'T00:00:00Z';
+                };
+
+                const logsToInsert = [];
+                for (const row of jsonData) {
+                    let email = getCol(row, ['email']);
+                    if (!email) continue; 
+                    if (email.toLowerCase().includes('latiefsn02')) email = 'latiefsn900@gmail.com';
+                    
+                    const ts = getCol(row, ['timestamp', 'date', 'tanggal']);
+                    let dateStr = new Date().toISOString().split('T')[0];
+                    if (ts) {
+                        try {
+                            const d = new Date(ts);
+                            if (!isNaN(d)) {
+                                const pad = n => String(n).padStart(2, '0');
+                                dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+                            } else if (typeof ts === 'number') {
+                                // Excel date float
+                                const d2 = new Date(Math.round((ts - 25569)*86400*1000));
+                                const pad = n => String(n).padStart(2, '0');
+                                dateStr = `${d2.getFullYear()}-${pad(d2.getMonth()+1)}-${pad(d2.getDate())}`;
+                            }
+                        } catch (err) {}
+                    }
+                    
+                    const start_time = getCol(row, ['berangkat', 'start', 'awal']);
+                    const end_time = getCol(row, ['tiba', 'end', 'akhir']);
+                    const from_loc = getCol(row, ['dari', 'asal']);
+                    const to_loc = getCol(row, ['ke', 'tujuan']);
+                    let dist = parseFloat(String(getCol(row, ['jarak', 'km'])).replace(',', '.')) || 0;
+                    
+                    logsToInsert.push({
+                        user_email: email,
+                        date: dateStr,
+                        time: start_time || '00:00',
+                        from_location: from_loc || 'Unknown',
+                        to_location: to_loc || 'Unknown',
+                        distance_km: dist,
+                        amount_rp: Math.round(dist * 300),
+                        status: 'selesai',
+                        start_time: parseTime(start_time, dateStr),
+                        end_time: parseTime(end_time, dateStr)
+                    });
+                }
+                
+                if (logsToInsert.length === 0) {
+                    showToast('Tidak ada baris data valid', 'error');
+                    return;
+                }
+
+                if (!confirm(`Ditemukan ${logsToInsert.length} data riwayat. Yakin ingin import? Data akan digabung.`)) {
+                    event.target.value = '';
+                    return;
+                }
+                
+                showToast('Sedang mengimport...', 'info');
+
+                const chunkSize = 50;
+                for (let i = 0; i < logsToInsert.length; i += chunkSize) {
+                    const chunk = logsToInsert.slice(i, i + chunkSize);
+                    const { error } = await supabaseClient.from('courier_logs').insert(chunk);
+                    if (error) throw error;
+                }
+
+                showToast(`Berhasil import ${logsToInsert.length} data`, 'success');
+                this.loadLogs();
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal import: ' + err.message, 'error');
+            } finally {
+                event.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
 };
 

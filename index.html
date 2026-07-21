@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=75">
+    <link rel="stylesheet" href="style.css?v=76">
     <script>
         window.addEventListener('error', function(e) {
             alert('JS Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
@@ -461,8 +461,13 @@
                 </div>
 
                 <div class="glass-card" style="margin-top: 2rem;">
-                    <div class="card-header">
-                        <h2>📋 Riwayat Perjalanan (Bulan Ini)</h2>
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2 style="margin: 0;">📋 Riwayat Perjalanan (Bulan Ini)</h2>
+                        <div id="admin-courier-actions" style="display: none; gap: 10px;">
+                            <button class="btn btn-secondary btn-sm" onclick="Courier.exportToExcel()">📥 Export Excel</button>
+                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('import-courier-logs').click()">📤 Import Excel Lama</button>
+                            <input type="file" id="import-courier-logs" accept=".xlsx, .xls, .csv" style="display: none;" onchange="Courier.importExcel(event)">
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-wrapper">
@@ -538,7 +543,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=75"></script>
+    <script src="app.js?v=76"></script>
 </body>
 
 </html>
