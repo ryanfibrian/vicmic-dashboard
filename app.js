@@ -2110,171 +2110,74 @@ const Upload = {
 };
 
 const Courier = {
-    cache: {},
-    typingTimeout: null,
-    currentFromCoords: null,
-    currentToCoords: null,
+    timerInterval: null,
     
     init() {
-        const fromInput = document.getElementById('courier-from');
-        const toInput = document.getElementById('courier-to');
-        const dateInput = document.getElementById('courier-date');
-        const timeInput = document.getElementById('courier-time');
-        
-        if (!fromInput) return; // not loaded
-        
-        // set default datetime
-        const now = new Date();
-        dateInput.value = now.toISOString().split('T')[0];
-        timeInput.value = now.toTimeString().substring(0,5);
-
-        fromInput.addEventListener('input', (e) => this.handleInput(e, 'from'));
-        toInput.addEventListener('input', (e) => this.handleInput(e, 'to'));
-        
         document.getElementById('courier-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveLog();
         });
 
-        // Hide autocomplete when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#courier-from') && !e.target.closest('#autocomplete-from')) {
-                document.getElementById('autocomplete-from').classList.add('hidden');
-            }
-            if (!e.target.closest('#courier-to') && !e.target.closest('#autocomplete-to')) {
-                document.getElementById('autocomplete-to').classList.add('hidden');
-            }
+        document.getElementById('edit-courier-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveEditLog();
+        });
+        
+        // Start the UI timer updater
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = setInterval(() => this.updateTimers(), 1000);
+    },
+
+    updateTimers() {
+        const now = new Date();
+        document.querySelectorAll('.courier-timer').forEach(el => {
+            const startTime = new Date(el.dataset.start);
+            const diffMs = now - startTime;
+            if (diffMs < 0) return;
+            
+            const hours = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+            const minutes = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+            const seconds = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+            
+            el.textContent = `${hours}:${minutes}:${seconds}`;
         });
     },
 
-    async handleInput(e, type) {
-        const query = e.target.value.trim();
-        const dropdown = document.getElementById(`autocomplete-${type}`);
-        
-        if (query.length < 3) {
-            dropdown.classList.add('hidden');
-            if (type === 'from') this.currentFromCoords = null;
-            if (type === 'to') this.currentToCoords = null;
-            this.updateDistance();
-            return;
-        }
-
-        clearTimeout(this.typingTimeout);
-        this.typingTimeout = setTimeout(() => this.searchLocation(query, type), 500);
-    },
-
-    async searchLocation(query, type) {
-        const dropdown = document.getElementById(`autocomplete-${type}`);
-        dropdown.innerHTML = `<div class="autocomplete-item loading">Mencari...</div>`;
-        dropdown.classList.remove('hidden');
-
-        try {
-            // Check cache
-            let data = this.cache[query];
-            if (!data) {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=5`, {
-                    headers: {
-                        'Accept-Language': 'id'
-                    }
-                });
-                data = await res.json();
-                this.cache[query] = data;
-            }
-
-            dropdown.innerHTML = '';
-            if (data.length === 0) {
-                dropdown.innerHTML = `<div class="autocomplete-item">Tidak ditemukan</div>`;
-                return;
-            }
-
-            data.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                div.textContent = item.display_name;
-                div.onclick = () => this.selectLocation(item, type);
-                dropdown.appendChild(div);
-            });
-        } catch (error) {
-            console.error('Nominatim error:', error);
-            dropdown.innerHTML = `<div class="autocomplete-item">Terjadi kesalahan</div>`;
-        }
-    },
-
-    selectLocation(item, type) {
-        const input = document.getElementById(`courier-${type}`);
-        const dropdown = document.getElementById(`autocomplete-${type}`);
-        
-        input.value = item.display_name;
-        dropdown.classList.add('hidden');
-
-        if (type === 'from') {
-            this.currentFromCoords = { lat: item.lat, lon: item.lon };
-        } else {
-            this.currentToCoords = { lat: item.lat, lon: item.lon };
-        }
-
-        this.updateDistance();
-    },
-
-    async updateDistance() {
-        const distEl = document.getElementById('courier-distance');
-        const rewardEl = document.getElementById('courier-reward');
-        const btnSave = document.getElementById('btn-save-courier');
-
-        if (!this.currentFromCoords || !this.currentToCoords) {
-            distEl.textContent = '0 KM';
-            rewardEl.textContent = 'Rp 0';
-            btnSave.disabled = true;
-            return;
-        }
-
-        distEl.textContent = 'Menghitung...';
-        btnSave.disabled = true;
-
-        try {
-            // OSRM coordinates format: lon,lat
-            const coordsStr = `${this.currentFromCoords.lon},${this.currentFromCoords.lat};${this.currentToCoords.lon},${this.currentToCoords.lat}`;
-            const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=false`);
-            const data = await res.json();
-
-            if (data.code !== 'Ok') throw new Error(data.message);
-
-            const distanceMeters = data.routes[0].distance;
-            const distanceKm = (distanceMeters / 1000).toFixed(2);
-            const reward = Math.round(distanceKm * 300);
-
-            distEl.textContent = `${distanceKm} KM`;
-            distEl.dataset.km = distanceKm;
-            rewardEl.textContent = formatCurrency(reward);
-            rewardEl.dataset.rp = reward;
-            
-            btnSave.disabled = false;
-        } catch (error) {
-            console.error('OSRM error:', error);
-            distEl.textContent = 'Gagal';
-            rewardEl.textContent = '-';
-        }
+    formatDuration(startStr, endStr) {
+        if (!startStr || !endStr) return '-';
+        const diffMs = new Date(endStr) - new Date(startStr);
+        if (diffMs < 0) return '-';
+        const hours = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+        const minutes = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+        const seconds = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
     },
 
     async saveLog() {
-        const distEl = document.getElementById('courier-distance');
-        const rewardEl = document.getElementById('courier-reward');
+        const fromVal = document.getElementById('courier-from').value;
+        const toVal = document.getElementById('courier-to').value;
+        const distVal = document.getElementById('courier-distance').value;
+        
+        const distanceKm = parseFloat(distVal);
+        const reward = Math.round(distanceKm * 300);
         
         const now = new Date();
         const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toTimeString().substring(0,5);
-
+        
         const log = {
             user_email: Auth.currentUser.email,
             date: dateStr,
-            time: timeStr,
-            from_location: document.getElementById('courier-from').value,
-            to_location: document.getElementById('courier-to').value,
-            distance_km: parseFloat(distEl.dataset.km),
-            amount_rp: parseInt(rewardEl.dataset.rp)
+            time: now.toTimeString().substring(0,5), // legacy fallback
+            from_location: fromVal,
+            to_location: toVal,
+            distance_km: distanceKm,
+            amount_rp: reward,
+            status: 'sedang jalan',
+            start_time: now.toISOString()
         };
 
-        const btn = document.getElementById('btn-save-courier');
+        const btn = document.querySelector('#courier-form button[type="submit"]');
+        const originalText = btn.innerHTML;
         btn.disabled = true;
         btn.textContent = 'Menyimpan...';
 
@@ -2282,21 +2185,38 @@ const Courier = {
             const { error } = await supabaseClient.from('courier_logs').insert([log]);
             if (error) throw error;
             
-            showToast('Log perjalanan berhasil disimpan!', 'success');
+            showToast('Perjalanan dimulai!', 'success');
             
             // reset form
             document.getElementById('courier-from').value = '';
             document.getElementById('courier-to').value = '';
-            this.currentFromCoords = null;
-            this.currentToCoords = null;
-            this.updateDistance();
+            document.getElementById('courier-distance').value = '';
             
-            this.loadLogs(); // refresh table
+            this.loadLogs();
         } catch (e) {
             console.error('Save log error:', e);
-            showToast('Gagal menyimpan log: ' + e.message, 'error');
+            showToast('Gagal memulai perjalanan: ' + e.message, 'error');
+        } finally {
             btn.disabled = false;
-            btn.textContent = 'Simpan Log Perjalanan';
+            btn.innerHTML = originalText;
+        }
+    },
+
+    async finishLog(id) {
+        if (!confirm('Selesaikan perjalanan ini?')) return;
+        
+        const { error } = await supabaseClient.from('courier_logs')
+            .update({ 
+                status: 'selesai', 
+                end_time: new Date().toISOString() 
+            })
+            .eq('id', id);
+            
+        if (error) {
+            showToast('Gagal menyelesaikan perjalanan', 'error');
+        } else {
+            showToast('Perjalanan selesai', 'success');
+            this.loadLogs();
         }
     },
 
@@ -2310,8 +2230,7 @@ const Courier = {
         let query = supabaseClient.from('courier_logs')
             .select('*')
             .gte('date', startOfMonth)
-            .order('date', { ascending: false })
-            .order('time', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (!Auth.isAdmin()) {
             query = query.eq('user_email', Auth.currentUser.email);
@@ -2327,17 +2246,14 @@ const Courier = {
         let totalKm = 0;
         let totalRp = 0;
 
-        // Filter UI for Admin
         if (Auth.isAdmin()) {
             const filterEl = document.getElementById('filter-courier-user');
-            if (filterEl.options.length <= 1) { // Populate only once if empty
+            if (filterEl.options.length <= 1) { 
                 filterEl.style.display = '';
-                // Extract unique couriers
                 const uniqueEmails = [...new Set(data.map(log => log.user_email))];
                 filterEl.innerHTML = `<option value="">-- Semua Kurir --</option>` + 
                                      uniqueEmails.map(e => `<option value="${e}">${e}</option>`).join('');
                 
-                // Add event listener (ensure it doesn't duplicate)
                 filterEl.onchange = () => {
                     const selected = filterEl.value;
                     const rows = tbody.querySelectorAll('tr');
@@ -2347,8 +2263,10 @@ const Courier = {
                     rows.forEach(row => {
                         if (!selected || row.dataset.email === selected) {
                             row.style.display = '';
-                            fTotalKm += parseFloat(row.dataset.km || 0);
-                            fTotalRp += parseInt(row.dataset.rp || 0);
+                            if (row.dataset.status === 'selesai' || !row.dataset.status) {
+                                fTotalKm += parseFloat(row.dataset.km || 0);
+                                fTotalRp += parseInt(row.dataset.rp || 0);
+                            }
                         } else {
                             row.style.display = 'none';
                         }
@@ -2364,30 +2282,56 @@ const Courier = {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Belum ada log perjalanan bulan ini</td></tr>`;
         } else {
             tbody.innerHTML = data.map(log => {
-                totalKm += log.distance_km;
-                totalRp += log.amount_rp;
+                // Only count towards total if finished or legacy (no status)
+                const isSelesai = (log.status === 'selesai' || !log.status);
+                if (isSelesai) {
+                    totalKm += log.distance_km;
+                    totalRp += log.amount_rp;
+                }
+                
+                let statusHtml = '';
+                let actionHtml = '';
+                
+                if (log.status === 'sedang jalan') {
+                    statusHtml = `<span style="display:inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255, 193, 7, 0.2); color: #ff9800; font-size: 0.85em; font-weight: bold; border: 1px solid #ff9800;">Sedang Jalan</span>
+                                  <div style="font-family: monospace; font-size: 1.1em; margin-top: 5px; color: var(--text-primary);" class="courier-timer" data-start="${log.start_time}">00:00:00</div>`;
+                                  
+                    if (Auth.currentUser.email === log.user_email) {
+                        actionHtml += `<button class="btn btn-sm btn-primary" onclick="Courier.finishLog('${log.id}')" style="margin-right: 5px; margin-bottom: 5px;">✅ Selesai</button>`;
+                    }
+                } else {
+                    const duration = this.formatDuration(log.start_time, log.end_time);
+                    statusHtml = `<span style="display:inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(76, 175, 80, 0.2); color: #4caf50; font-size: 0.85em; font-weight: bold; border: 1px solid #4caf50;">Selesai</span>
+                                  <div style="font-size: 0.9em; margin-top: 5px; color: var(--text-secondary);">⏱️ ${duration}</div>`;
+                }
+
+                if (Auth.isAdmin()) {
+                    actionHtml += `<button class="btn btn-sm btn-secondary" onclick="Courier.editLog('${log.id}')" style="margin-right: 5px; margin-bottom: 5px;">Edit</button>`;
+                }
+                
+                actionHtml += `<button class="btn btn-sm btn-danger" onclick="Courier.deleteLog('${log.id}')">Hapus</button>`;
                 
                 return `
-                <tr data-email="${log.user_email}" data-km="${log.distance_km}" data-rp="${log.amount_rp}">
-                    <td>${log.date} <span style="color:var(--text-muted);font-size:0.9em">${log.time}</span><br>
-                        <small style="color:var(--accent)">${Auth.isAdmin() ? log.user_email : ''}</small>
+                <tr data-email="${log.user_email}" data-km="${log.distance_km}" data-rp="${log.amount_rp}" data-status="${log.status || 'selesai'}">
+                    <td>
+                        ${statusHtml}
+                        <br><small style="color:var(--accent)">${Auth.isAdmin() ? log.user_email : new Date(log.start_time || log.date).toLocaleDateString('id-ID')}</small>
                     </td>
                     <td><div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.from_location}">${log.from_location}</div></td>
                     <td><div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.to_location}">${log.to_location}</div></td>
                     <td>${log.distance_km} KM</td>
-                    <td style="color: var(--success);">${formatCurrency(log.amount_rp)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-danger" onclick="Courier.deleteLog('${log.id}')">Hapus</button>
+                    <td style="color: var(--success);">${isSelesai ? formatCurrency(log.amount_rp) : '-'}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        ${actionHtml}
                     </td>
                 </tr>
                 `;
             }).join('');
             
-            // If filter is active, trigger change to recalculate summary
             const filterEl = document.getElementById('filter-courier-user');
             if (Auth.isAdmin() && filterEl.value) {
                 filterEl.onchange();
-                return; // Summary updated by filter
+                return;
             }
         }
 
@@ -2395,8 +2339,50 @@ const Courier = {
         document.getElementById('rekap-komisi').textContent = formatCurrency(totalRp);
     },
     
+    async editLog(id) {
+        const { data, error } = await supabaseClient.from('courier_logs').select('*').eq('id', id).single();
+        if (error || !data) {
+            showToast('Data tidak ditemukan', 'error');
+            return;
+        }
+        
+        document.getElementById('edit-courier-id').value = data.id;
+        document.getElementById('edit-courier-from').value = data.from_location;
+        document.getElementById('edit-courier-to').value = data.to_location;
+        document.getElementById('edit-courier-distance').value = data.distance_km;
+        
+        document.getElementById('edit-courier-modal').style.display = 'flex';
+    },
+
+    async saveEditLog() {
+        const id = document.getElementById('edit-courier-id').value;
+        const fromLoc = document.getElementById('edit-courier-from').value;
+        const toLoc = document.getElementById('edit-courier-to').value;
+        const dist = parseFloat(document.getElementById('edit-courier-distance').value);
+        const reward = Math.round(dist * 300);
+
+        const { error } = await supabaseClient.from('courier_logs')
+            .update({
+                from_location: fromLoc,
+                to_location: toLoc,
+                distance_km: dist,
+                amount_rp: reward
+            })
+            .eq('id', id);
+
+        if (error) {
+            showToast('Gagal menyimpan perubahan', 'error');
+        } else {
+            showToast('Perubahan berhasil disimpan', 'success');
+            document.getElementById('edit-courier-modal').style.display = 'none';
+            this.loadLogs();
+        }
+    },
+
     async deleteLog(id) {
-        if (!confirm('Hapus log perjalanan ini?')) return;
+        if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+        if (!confirm('YAKIN HAPUS? Data tidak bisa dikembalikan.')) return;
+
         const { error } = await supabaseClient.from('courier_logs').delete().eq('id', id);
         if (error) {
             showToast('Gagal menghapus log', 'error');

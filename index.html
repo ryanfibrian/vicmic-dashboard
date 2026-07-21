@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=64">
+    <link rel="stylesheet" href="style.css?v=65">
 </head>
 
 <body>
@@ -400,46 +400,26 @@
                 <div class="header">
                     <h1>🚚 Log Perjalanan Kurir</h1>
                     <p class="text-muted">Catat rute perjalanan dan hitung jarak otomatis (didukung oleh OSRM)</p>
-                </div>
-
-                <div class="dashboard-grid">
-                    <div class="glass-card">
                         <div class="card-header">
                             <h2>📝 Form Pencatatan</h2>
                         </div>
                         <div class="card-body">
                             <form id="courier-form" class="form-row" style="flex-direction: column;">
-                                <div style="display: flex; gap: 10px; width: 100%; align-items: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 8px; border: 1px dashed var(--border-color);">
-                                    <span style="font-size: 1.2rem;">⏱️</span>
-                                    <div>
-                                        <div style="font-size: 0.85em; color: var(--text-secondary);">Waktu Input</div>
-                                        <div style="font-weight: 500; color: var(--text-primary);">Otomatis (Saat Ini)</div>
-                                    </div>
-                                    <!-- Hidden fields for legacy if needed, or we just remove them -->
-                                    <input type="hidden" id="courier-date" required>
-                                    <input type="hidden" id="courier-time" required>
-                                </div>
                                 <div style="position: relative; width: 100%; margin-top: 5px;">
+                                    <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Lokasi Asal</label>
                                     <input type="text" id="courier-from" class="input-field" placeholder="Ketik Lokasi Asal..." autocomplete="off" style="width: 100%;" required>
-                                    <div id="autocomplete-from" class="autocomplete-dropdown hidden"></div>
                                 </div>
-                                <div style="position: relative; width: 100%;">
+                                <div style="position: relative; width: 100%; margin-top: 10px;">
+                                    <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Lokasi Tujuan</label>
                                     <input type="text" id="courier-to" class="input-field" placeholder="Ketik Lokasi Tujuan..." autocomplete="off" style="width: 100%;" required>
-                                    <div id="autocomplete-to" class="autocomplete-dropdown hidden"></div>
                                 </div>
-                                <div class="stats-card" style="background: var(--bg-primary); margin: 10px 0; border: 1px solid var(--border-color);">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <span style="font-size: 0.9em; color: var(--text-secondary);">Jarak Tempuh</span>
-                                            <h3 id="courier-distance" style="color: var(--accent); margin: 0;">0 KM</h3>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <span style="font-size: 0.9em; color: var(--text-secondary);">Estimasi Komisi</span>
-                                            <h3 id="courier-reward" style="color: var(--success); margin: 0;">Rp 0</h3>
-                                        </div>
-                                    </div>
+                                <div style="position: relative; width: 100%; margin-top: 10px;">
+                                    <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Jarak (KM)</label>
+                                    <input type="number" id="courier-distance" class="input-field" placeholder="Contoh: 5.5" autocomplete="off" style="width: 100%; font-size: 1.2rem; font-weight: bold; color: var(--accent);" step="0.1" required min="0.1">
                                 </div>
-                                <button type="submit" id="btn-save-courier" class="btn btn-primary" style="width: 100%;" disabled>Simpan Log Perjalanan</button>
+                                <div style="width: 100%; text-align: right; margin-top: 15px;">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 8px;">🚀 Mulai Jalan</button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -477,12 +457,12 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Tanggal & Waktu</th>
-                                        <th>Dari</th>
-                                        <th>Ke</th>
-                                        <th>Jarak</th>
-                                        <th>Komisi (Rp)</th>
-                                        <th>Aksi</th>
+                                        <th width="150">Status / Waktu</th>
+                                        <th>Asal</th>
+                                        <th>Tujuan</th>
+                                        <th width="80">Jarak</th>
+                                        <th width="100">Komisi</th>
+                                        <th width="150" style="text-align: right;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="courier-table-body">
@@ -512,12 +492,37 @@
     <!-- ===== TOAST CONTAINER ===== -->
     <div id="toast-container"></div>
 
+    <!-- Edit Courier Log Modal for Super Admin -->
+    <div id="edit-courier-modal" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-content glass-card" style="background: var(--bg-primary); width: 90%; max-width: 400px; padding: 20px; border-radius: var(--radius); position: relative;">
+            <button class="btn-icon" onclick="document.getElementById('edit-courier-modal').style.display='none'" style="position: absolute; right: 10px; top: 10px;">✖</button>
+            <h3 style="margin-top: 0;">Edit Log Kurir</h3>
+            <form id="edit-courier-form" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="edit-courier-id">
+                
+                <label style="font-size: 0.9em; color: var(--text-secondary);">Lokasi Asal</label>
+                <input type="text" id="edit-courier-from" class="input-field" required>
+                
+                <label style="font-size: 0.9em; color: var(--text-secondary);">Lokasi Tujuan</label>
+                <input type="text" id="edit-courier-to" class="input-field" required>
+                
+                <label style="font-size: 0.9em; color: var(--text-secondary);">Jarak (KM)</label>
+                <input type="number" id="edit-courier-distance" class="input-field" step="0.1" required>
+
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('edit-courier-modal').style.display='none'">Batal</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Simpan Edit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ===== SCRIPTS ===== -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=64"></script>
+    <script src="app.js?v=65"></script>
 </body>
 
 </html>
