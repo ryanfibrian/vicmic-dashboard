@@ -180,13 +180,16 @@ const DB = {
     },
 
     async addUser(email, role, addedBy) {
-        const { error } = await supabaseClient
+        const { error } = await window.supabaseClient
             .from('allowed_users')
             .insert({ email: email.toLowerCase(), role, added_by: addedBy });
         if (error) {
             console.error('addUser error:', error);
             if (error.code === '23505') showToast('Email sudah terdaftar', 'warning');
+            else showToast('Gagal menambahkan user (cek database)', 'error');
+            return false;
         }
+        return true;
     },
 
     async removeUser(email) {
@@ -1743,10 +1746,12 @@ const UserManagement = {
                 return;
             }
 
-            await DB.addUser(email, role, Auth.currentUser.email);
-            showToast('User berhasil ditambahkan', 'success');
-            document.getElementById('input-user-email').value = '';
-            await this.renderTable();
+            const success = await DB.addUser(email, role, Auth.currentUser.email);
+            if (success) {
+                showToast('User berhasil ditambahkan', 'success');
+                document.getElementById('input-user-email').value = '';
+                await this.renderTable();
+            }
         };
     },
 
