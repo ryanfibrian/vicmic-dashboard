@@ -484,12 +484,17 @@ const Auth = {
         } else {
             avatar.style.display = 'none';
         }
-
         const badge = document.getElementById('user-role-badge');
         badge.textContent = this.currentUser.role.toUpperCase();
         badge.className = 'user-role-badge badge-' + this.currentUser.role;
 
-        if (this.currentUser.role === 'sales') {
+        if (this.isKurir()) {
+            document.querySelectorAll('.courier-only').forEach(el => el.style.display = '');
+        } else {
+            document.querySelectorAll('.courier-only').forEach(el => el.style.display = 'none');
+        }
+
+        if (this.isSales()) {
             document.body.classList.add('role-sales');
             document.getElementById('btn-toggle-distribusi').style.display = 'inline-block';
             PriceList.distribusiVisible = false;
@@ -506,7 +511,8 @@ const Auth = {
 
     async verifyUser(email) { return !!(await DB.findUser(email.toLowerCase())); },
     isAdmin() { return this.currentUser && this.currentUser.role === 'admin'; },
-    isSales() { return this.currentUser && this.currentUser.role === 'sales'; },
+    isSales() { return this.currentUser && (this.currentUser.role === 'sales' || this.currentUser.role === 'sales_kurir'); },
+    isKurir() { return this.currentUser && (this.currentUser.role === 'sales_kurir' || this.currentUser.role === 'admin'); },
 
     logout() {
         this.currentUser = null;
@@ -555,8 +561,8 @@ const Router = {
     handleRoute() {
         let page = window.location.hash.replace('#', '') || (Auth.isAdmin() ? 'dashboard' : 'pricelist');
 
-        // Guard: Sales can only see pricelist and reports
-        if (Auth.isSales() && page !== 'pricelist' && page !== 'reports') {
+        // Guard: Sales can only see pricelist and reports (and courier if kurir)
+        if (Auth.isSales() && page !== 'pricelist' && page !== 'reports' && !(Auth.isKurir() && page === 'courier')) {
             window.location.hash = 'pricelist';
             return;
         }
@@ -581,6 +587,7 @@ const Router = {
             case 'users': await UserManagement.render(); break;
             case 'upload': await Upload.render(); break;
             case 'settings': await Settings.render(); break;
+            case 'courier': if (Auth.isKurir()) await Courier.loadLogs(); break;
         }
     }
 };
@@ -1784,6 +1791,7 @@ const UserManagement = {
                     <td>
                         <select class="input-field edit-role" style="width: 100%; padding: 4px;">
                             <option value="sales" ${role === 'sales' ? 'selected' : ''}>Sales</option>
+                            <option value="sales_kurir" ${role === 'sales_kurir' ? 'selected' : ''}>Sales + Kurir</option>
                             <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
                         </select>
                     </td>
@@ -2083,6 +2091,256 @@ const Upload = {
     }
 };
 
+const Courier = {
+    cache: {},
+    typingTimeout: null,
+    currentFromCoords: null,
+    currentToCoords: null,
+    
+    init() {
+        const fromInput = document.getElementById('courier-from');
+        const toInput = document.getElementById('courier-to');
+        const dateInput = document.getElementById('courier-date');
+        const timeInput = document.getElementById('courier-time');
+        
+        if (!fromInput) return; // not loaded
+        
+        // set default datetime
+        const now = new Date();
+        dateInput.value = now.toISOString().split('T')[0];
+        timeInput.value = now.toTimeString().substring(0,5);
+
+        fromInput.addEventListener('input', (e) => this.handleInput(e, 'from'));
+        toInput.addEventListener('input', (e) => this.handleInput(e, 'to'));
+        
+        document.getElementById('courier-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveLog();
+        });
+
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#courier-from') && !e.target.closest('#autocomplete-from')) {
+                document.getElementById('autocomplete-from').classList.add('hidden');
+            }
+            if (!e.target.closest('#courier-to') && !e.target.closest('#autocomplete-to')) {
+                document.getElementById('autocomplete-to').classList.add('hidden');
+            }
+        });
+    },
+
+    async handleInput(e, type) {
+        const query = e.target.value.trim();
+        const dropdown = document.getElementById(`autocomplete-${type}`);
+        
+        if (query.length < 3) {
+            dropdown.classList.add('hidden');
+            if (type === 'from') this.currentFromCoords = null;
+            if (type === 'to') this.currentToCoords = null;
+            this.updateDistance();
+            return;
+        }
+
+        clearTimeout(this.typingTimeout);
+        this.typingTimeout = setTimeout(() => this.searchLocation(query, type), 500);
+    },
+
+    async searchLocation(query, type) {
+        const dropdown = document.getElementById(`autocomplete-${type}`);
+        dropdown.innerHTML = `<div class="autocomplete-item loading">Mencari...</div>`;
+        dropdown.classList.remove('hidden');
+
+        try {
+            // Check cache
+            let data = this.cache[query];
+            if (!data) {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=5`);
+                data = await res.json();
+                this.cache[query] = data;
+            }
+
+            dropdown.innerHTML = '';
+            if (data.length === 0) {
+                dropdown.innerHTML = `<div class="autocomplete-item">Tidak ditemukan</div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.textContent = item.display_name;
+                div.onclick = () => this.selectLocation(item, type);
+                dropdown.appendChild(div);
+            });
+        } catch (error) {
+            console.error('Nominatim error:', error);
+            dropdown.innerHTML = `<div class="autocomplete-item">Terjadi kesalahan</div>`;
+        }
+    },
+
+    selectLocation(item, type) {
+        const input = document.getElementById(`courier-${type}`);
+        const dropdown = document.getElementById(`autocomplete-${type}`);
+        
+        input.value = item.display_name;
+        dropdown.classList.add('hidden');
+
+        if (type === 'from') {
+            this.currentFromCoords = { lat: item.lat, lon: item.lon };
+        } else {
+            this.currentToCoords = { lat: item.lat, lon: item.lon };
+        }
+
+        this.updateDistance();
+    },
+
+    async updateDistance() {
+        const distEl = document.getElementById('courier-distance');
+        const rewardEl = document.getElementById('courier-reward');
+        const btnSave = document.getElementById('btn-save-courier');
+
+        if (!this.currentFromCoords || !this.currentToCoords) {
+            distEl.textContent = '0 KM';
+            rewardEl.textContent = 'Rp 0';
+            btnSave.disabled = true;
+            return;
+        }
+
+        distEl.textContent = 'Menghitung...';
+        btnSave.disabled = true;
+
+        try {
+            // OSRM coordinates format: lon,lat
+            const coordsStr = `${this.currentFromCoords.lon},${this.currentFromCoords.lat};${this.currentToCoords.lon},${this.currentToCoords.lat}`;
+            const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=false`);
+            const data = await res.json();
+
+            if (data.code !== 'Ok') throw new Error(data.message);
+
+            const distanceMeters = data.routes[0].distance;
+            const distanceKm = (distanceMeters / 1000).toFixed(2);
+            const reward = Math.round(distanceKm * 300);
+
+            distEl.textContent = `${distanceKm} KM`;
+            distEl.dataset.km = distanceKm;
+            rewardEl.textContent = formatCurrency(reward);
+            rewardEl.dataset.rp = reward;
+            
+            btnSave.disabled = false;
+        } catch (error) {
+            console.error('OSRM error:', error);
+            distEl.textContent = 'Gagal';
+            rewardEl.textContent = '-';
+        }
+    },
+
+    async saveLog() {
+        const distEl = document.getElementById('courier-distance');
+        const rewardEl = document.getElementById('courier-reward');
+        
+        const log = {
+            user_email: Auth.currentUser.email,
+            date: document.getElementById('courier-date').value,
+            time: document.getElementById('courier-time').value,
+            from_location: document.getElementById('courier-from').value,
+            to_location: document.getElementById('courier-to').value,
+            distance_km: parseFloat(distEl.dataset.km),
+            amount_rp: parseInt(rewardEl.dataset.rp)
+        };
+
+        const btn = document.getElementById('btn-save-courier');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const { error } = await window.supabaseClient.from('courier_logs').insert([log]);
+            if (error) throw error;
+            
+            showToast('Log perjalanan berhasil disimpan!', 'success');
+            
+            // reset form
+            document.getElementById('courier-from').value = '';
+            document.getElementById('courier-to').value = '';
+            this.currentFromCoords = null;
+            this.currentToCoords = null;
+            this.updateDistance();
+            
+            this.loadLogs(); // refresh table
+        } catch (e) {
+            console.error('Save log error:', e);
+            showToast('Gagal menyimpan log: ' + e.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Simpan Log Perjalanan';
+        }
+    },
+
+    async loadLogs() {
+        const tbody = document.getElementById('courier-table-body');
+        if (!tbody) return;
+
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        
+        let query = window.supabaseClient.from('courier_logs')
+            .select('*')
+            .gte('date', startOfMonth)
+            .order('date', { ascending: false })
+            .order('time', { ascending: false });
+
+        if (!Auth.isAdmin()) {
+            query = query.eq('user_email', Auth.currentUser.email);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger);">Gagal memuat data</td></tr>`;
+            return;
+        }
+
+        let totalKm = 0;
+        let totalRp = 0;
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Belum ada log perjalanan bulan ini</td></tr>`;
+        } else {
+            tbody.innerHTML = data.map(log => {
+                totalKm += log.distance_km;
+                totalRp += log.amount_rp;
+                
+                return `
+                <tr>
+                    <td>${log.date} <span style="color:var(--text-muted);font-size:0.9em">${log.time}</span><br>
+                        <small style="color:var(--accent)">${Auth.isAdmin() ? log.user_email : ''}</small>
+                    </td>
+                    <td><div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.from_location}">${log.from_location}</div></td>
+                    <td><div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.to_location}">${log.to_location}</div></td>
+                    <td>${log.distance_km} KM</td>
+                    <td style="color: var(--success);">${formatCurrency(log.amount_rp)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="Courier.deleteLog('${log.id}')">Hapus</button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('rekap-jarak').textContent = `${totalKm.toFixed(2)} KM`;
+        document.getElementById('rekap-komisi').textContent = formatCurrency(totalRp);
+    },
+    
+    async deleteLog(id) {
+        if (!confirm('Hapus log perjalanan ini?')) return;
+        const { error } = await window.supabaseClient.from('courier_logs').delete().eq('id', id);
+        if (error) {
+            showToast('Gagal menghapus log', 'error');
+        } else {
+            showToast('Log berhasil dihapus', 'success');
+            this.loadLogs();
+        }
+    }
+};
+
 // 14. APP INITIALIZATION
 document.addEventListener('DOMContentLoaded', async () => {
     // Theme Management
@@ -2119,6 +2377,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
+
+    if (window.Courier) Courier.init();
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {

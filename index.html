@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=59">
+    <link rel="stylesheet" href="style.css?v=60">
 </head>
 
 <body>
@@ -64,8 +64,11 @@
                 <li class="nav-item" data-page="reports">
                     <span class="nav-icon">📈</span><span class="nav-text">Laporan</span>
                 </li>
-                <li class="nav-item admin-only" data-page="users">
-                    <span class="nav-icon">👥</span><span class="nav-text">User Management</span>
+                <li class="nav-item admin-only" data-page="users" style="display: none;">
+                    <span class="nav-icon">👥</span> User Management
+                </li>
+                <li class="nav-item courier-only" data-page="courier" style="display: none;">
+                    <span class="nav-icon">🚚</span> Log Kurir
                 </li>
                 <li class="nav-item admin-only" data-page="upload">
                     <span class="nav-icon">📁</span><span class="nav-text">Upload Data</span>
@@ -320,6 +323,7 @@
                                 required>
                             <select id="select-user-role" class="input-field">
                                 <option value="sales">Sales</option>
+                                <option value="sales_kurir">Sales + Kurir</option>
                                 <option value="admin">Admin</option>
                             </select>
                             <button type="submit" class="btn btn-primary">➕ Tambah</button>
@@ -369,7 +373,7 @@
                             <ol style="margin-left: 20px; margin-bottom: 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-light);">
                                 <li style="margin-bottom: 4px;">Ketik/rancang rumus Anda di Excel (misal menggunakan sel <strong>A1</strong> sebagai Harga Distribusi).</li>
                                 <li style="margin-bottom: 4px;">Tanyakan ke ChatGPT atau AI semacamnya: <em>"Tolong ubah rumus Excel ini ke JavaScript. Anggap A1 adalah variabel <strong>h</strong>, dan pastikan diakhiri <strong>return</strong>"</em>.</li>
-                                <li>AI akan langsung memberikan kode JavaScript yang rapi, dan Anda tinggal <em>copy-paste</em> hasilnya ke dalam kolom pengaturan di bawah ini.</li>
+                                <li>AI akan langsung memberikan kode JavaScript yang rpi, dan Anda tinggal <em>copy-paste</em> hasilnya ke dalam kolom pengaturan di bawah ini.</li>
                             </ol>
                         </div>
                         
@@ -390,6 +394,100 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Courier Page -->
+            <div id="page-courier" class="page">
+                <div class="header">
+                    <h1>🚚 Log Perjalanan Kurir</h1>
+                    <p class="text-muted">Catat rute perjalanan dan hitung jarak otomatis (didukung oleh OSRM)</p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h2>📝 Form Pencatatan</h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="courier-form" class="form-row" style="flex-direction: column;">
+                                <div style="display: flex; gap: 10px; width: 100%;">
+                                    <input type="date" id="courier-date" class="input-field" style="flex: 1;" required>
+                                    <input type="time" id="courier-time" class="input-field" style="flex: 1;" required>
+                                </div>
+                                <div style="position: relative; width: 100%;">
+                                    <input type="text" id="courier-from" class="input-field" placeholder="Ketik Lokasi Asal..." autocomplete="off" style="width: 100%;" required>
+                                    <div id="autocomplete-from" class="autocomplete-dropdown hidden"></div>
+                                </div>
+                                <div style="position: relative; width: 100%;">
+                                    <input type="text" id="courier-to" class="input-field" placeholder="Ketik Lokasi Tujuan..." autocomplete="off" style="width: 100%;" required>
+                                    <div id="autocomplete-to" class="autocomplete-dropdown hidden"></div>
+                                </div>
+                                <div class="stats-card" style="background: var(--bg-primary); margin: 10px 0; border: 1px solid var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <span style="font-size: 0.9em; color: var(--text-secondary);">Jarak Tempuh</span>
+                                            <h3 id="courier-distance" style="color: var(--accent); margin: 0;">0 KM</h3>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <span style="font-size: 0.9em; color: var(--text-secondary);">Estimasi Komisi</span>
+                                            <h3 id="courier-reward" style="color: var(--success); margin: 0;">Rp 0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" id="btn-save-courier" class="btn btn-primary" style="width: 100%;" disabled>Simpan Log Perjalanan</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h2>💰 Rekap Komisi Kurir (Bulan Ini)</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
+                                <div class="kpi-card" style="padding: 1rem;">
+                                    <div class="kpi-title">Total Jarak</div>
+                                    <div class="kpi-value" id="rekap-jarak">0 KM</div>
+                                </div>
+                                <div class="kpi-card" style="padding: 1rem;">
+                                    <div class="kpi-title">Total Komisi</div>
+                                    <div class="kpi-value" id="rekap-komisi" style="color: var(--success);">Rp 0</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary);">Pilih Kurir (Khusus Admin):</label>
+                                <select id="filter-courier-user" class="input-field" style="width: 100%; padding: 6px; margin-top: 4px; display: none;">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card mt-2">
+                    <div class="card-header">
+                        <h2>📋 Riwayat Perjalanan (Bulan Ini)</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal & Waktu</th>
+                                        <th>Dari</th>
+                                        <th>Ke</th>
+                                        <th>Jarak</th>
+                                        <th>Komisi (Rp)</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="courier-table-body">
+                                    <tr><td colspan="6" style="text-align: center;">Memuat data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
         </main>
     </div>
 
@@ -413,7 +511,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=59"></script>
+    <script src="app.js?v=60"></script>
 </body>
 
 </html>
