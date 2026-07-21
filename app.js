@@ -2158,6 +2158,14 @@ const Courier = {
         });
     },
 
+    formatMs(ms) {
+        if (!ms || ms < 0) return '00:00:00';
+        const hours = String(Math.floor(ms / 3600000)).padStart(2, '0');
+        const minutes = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+        const seconds = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+    },
+
     formatDuration(startStr, endStr) {
         if (!startStr || !endStr) return '-';
         const diffMs = new Date(endStr) - new Date(startStr);
@@ -2295,6 +2303,7 @@ const Courier = {
 
         let totalKm = 0;
         let totalRp = 0;
+        let totalMs = 0;
 
         if (Auth.isAdmin()) {
             const filterEl = document.getElementById('filter-courier-user');
@@ -2310,6 +2319,7 @@ const Courier = {
                     const rows = tbody.querySelectorAll('tr');
                     let fTotalKm = 0;
                     let fTotalRp = 0;
+                    let fTotalMs = 0;
                     
                     rows.forEach(row => {
                         if (!selected || row.dataset.email === selected) {
@@ -2317,6 +2327,7 @@ const Courier = {
                             if (row.dataset.status === 'selesai' || !row.dataset.status) {
                                 fTotalKm += parseFloat(row.dataset.km || 0);
                                 fTotalRp += parseInt(row.dataset.rp || 0);
+                                fTotalMs += parseInt(row.dataset.ms || 0);
                             }
                         } else {
                             row.style.display = 'none';
@@ -2325,6 +2336,8 @@ const Courier = {
                     
                     document.getElementById('rekap-jarak').textContent = `${fTotalKm.toFixed(2)} KM`;
                     document.getElementById('rekap-komisi').textContent = formatCurrency(fTotalRp);
+                    const elWaktu = document.getElementById('rekap-waktu');
+                    if (elWaktu) elWaktu.textContent = Courier.formatMs(fTotalMs);
                 };
             }
         }
@@ -2335,9 +2348,15 @@ const Courier = {
             tbody.innerHTML = data.map(log => {
                 // Only count towards total if finished or legacy (no status)
                 const isSelesai = (log.status === 'selesai' || !log.status);
+                let diffMs = 0;
                 if (isSelesai) {
                     totalKm += log.distance_km;
                     totalRp += log.amount_rp;
+                    if (log.start_time && log.end_time) {
+                        const m = new Date(log.end_time) - new Date(log.start_time);
+                        if (m > 0) diffMs = m;
+                        totalMs += diffMs;
+                    }
                 }
                 
                 const startDateStr = log.start_time ? new Date(log.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
@@ -2369,7 +2388,7 @@ const Courier = {
                 let userEmailHtml = Auth.isAdmin() ? `<br><small style="color:var(--accent)">${log.user_email}</small>` : '';
 
                 return `
-                <tr data-email="${log.user_email}" data-km="${log.distance_km}" data-rp="${log.amount_rp}" data-status="${log.status || 'selesai'}">
+                <tr data-email="${log.user_email}" data-km="${log.distance_km}" data-rp="${log.amount_rp}" data-status="${log.status || 'selesai'}" data-ms="${diffMs}">
                     <td>${dateStr}${userEmailHtml}</td>
                     <td>${startDateStr}</td>
                     <td>${endDateStr}</td>
@@ -2395,6 +2414,8 @@ const Courier = {
 
         document.getElementById('rekap-jarak').textContent = `${totalKm.toFixed(2)} KM`;
         document.getElementById('rekap-komisi').textContent = formatCurrency(totalRp);
+        const elWaktu = document.getElementById('rekap-waktu');
+        if (elWaktu) elWaktu.textContent = Courier.formatMs(totalMs);
     },
     
     async editLog(id) {

@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=79">
+    <link rel="stylesheet" href="style.css?v=80">
     <script>
         window.addEventListener('error', function(e) {
             alert('JS Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
@@ -441,7 +441,11 @@
                             <h2>💰 Rekap Komisi Kurir (Bulan Ini)</h2>
                         </div>
                         <div class="card-body">
-                            <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="kpi-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                                <div class="kpi-card" style="padding: 1rem;">
+                                    <div class="kpi-title">Total Waktu Tempuh</div>
+                                    <div class="kpi-value" id="rekap-waktu">00:00:00</div>
+                                </div>
                                 <div class="kpi-card" style="padding: 1rem;">
                                     <div class="kpi-title">Total Jarak</div>
                                     <div class="kpi-value" id="rekap-jarak">0 KM</div>
@@ -544,7 +548,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=79"></script>
+    <script src="app.js?v=80"></script>
 </body>
 
 </html>
