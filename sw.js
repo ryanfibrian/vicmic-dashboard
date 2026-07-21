@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vicmic-dashboard-v67';
+const CACHE_NAME = 'vicmic-dashboard-v68';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
