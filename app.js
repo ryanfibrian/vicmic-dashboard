@@ -180,7 +180,7 @@ const DB = {
     },
 
     async addUser(email, role, addedBy) {
-        const { error } = await window.supabaseClient
+        const { error } = await supabaseClient
             .from('allowed_users')
             .insert({ email: email.toLowerCase(), role, added_by: addedBy });
         if (error) {
@@ -2258,7 +2258,7 @@ const Courier = {
         btn.textContent = 'Menyimpan...';
 
         try {
-            const { error } = await window.supabaseClient.from('courier_logs').insert([log]);
+            const { error } = await supabaseClient.from('courier_logs').insert([log]);
             if (error) throw error;
             
             showToast('Log perjalanan berhasil disimpan!', 'success');
@@ -2286,7 +2286,7 @@ const Courier = {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
         
-        let query = window.supabaseClient.from('courier_logs')
+        let query = supabaseClient.from('courier_logs')
             .select('*')
             .gte('date', startOfMonth)
             .order('date', { ascending: false })
@@ -2336,7 +2336,7 @@ const Courier = {
     
     async deleteLog(id) {
         if (!confirm('Hapus log perjalanan ini?')) return;
-        const { error } = await window.supabaseClient.from('courier_logs').delete().eq('id', id);
+        const { error } = await supabaseClient.from('courier_logs').delete().eq('id', id);
         if (error) {
             showToast('Gagal menghapus log', 'error');
         } else {
