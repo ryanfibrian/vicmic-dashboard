@@ -2583,18 +2583,19 @@ const Courier = {
                     const ts = getCol(row, ['timestamp', 'date', 'tanggal']);
                     let dateStr = new Date().toISOString().split('T')[0];
                     if (ts) {
-                        try {
-                            const d = new Date(ts);
-                            if (!isNaN(d)) {
-                                const pad = n => String(n).padStart(2, '0');
-                                dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-                            } else if (typeof ts === 'number') {
-                                // Excel date float
-                                const d2 = new Date(Math.round((ts - 25569)*86400*1000));
-                                const pad = n => String(n).padStart(2, '0');
-                                dateStr = `${d2.getFullYear()}-${pad(d2.getMonth()+1)}-${pad(d2.getDate())}`;
-                            }
-                        } catch (err) {}
+                        if (typeof ts === 'number') {
+                            const d2 = new Date(Math.round((ts - 25569)*86400*1000));
+                            const pad = n => String(n).padStart(2, '0');
+                            dateStr = `${d2.getFullYear()}-${pad(d2.getMonth()+1)}-${pad(d2.getDate())}`;
+                        } else {
+                            try {
+                                const d = new Date(ts);
+                                if (!isNaN(d)) {
+                                    const pad = n => String(n).padStart(2, '0');
+                                    dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+                                }
+                            } catch (err) {}
+                        }
                     }
                     
                     const start_time = getCol(row, ['berangkat', 'start', 'awal']);
