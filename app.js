@@ -2411,15 +2411,30 @@ const Courier = {
     },
 
     async deleteLog(id) {
-        if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+        if (!confirm('Anda yakin ingin menghapus log perjalanan ini?')) return;
         if (!confirm('YAKIN HAPUS? Data tidak bisa dikembalikan.')) return;
-
+        
         const { error } = await supabaseClient.from('courier_logs').delete().eq('id', id);
         if (error) {
             showToast('Gagal menghapus log', 'error');
         } else {
-            showToast('Log berhasil dihapus', 'success');
+            showToast('Log terhapus', 'success');
             this.loadLogs();
+        }
+    },
+    
+    async cleanupOldLogs() {
+        try {
+            const ninetyDaysAgo = new Date();
+            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+            const dateStr = ninetyDaysAgo.toISOString().split('T')[0];
+            
+            // Delete logs older than 90 days
+            await supabaseClient.from('courier_logs')
+                .delete()
+                .lt('date', dateStr);
+        } catch (e) {
+            console.error('Error cleaning up old courier logs:', e);
         }
     }
 };
@@ -2461,7 +2476,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    if (window.Courier) Courier.init();
+    if (typeof Courier !== 'undefined') {
+        Courier.init();
+        Courier.cleanupOldLogs(); // Clean 90-day logs
+    }
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
