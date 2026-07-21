@@ -479,7 +479,6 @@ const Auth = {
         document.getElementById('app-shell').style.display = '';
 
         if (this.isAdmin()) {
-            document.getElementById('admin-filters').style.display = 'flex';
             document.getElementById('admin-courier-filter-wrapper').style.display = 'block';
             document.getElementById('admin-courier-actions').style.display = 'flex';
         }
