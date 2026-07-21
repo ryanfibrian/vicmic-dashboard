@@ -2247,7 +2247,7 @@ const Courier = {
         let query = supabaseClient.from('courier_logs')
             .select('*')
             .gte('date', startOfMonth)
-            .order('created_at', { ascending: false });
+            .order('start_time', { ascending: false });
 
         if (!Auth.isAdmin()) {
             query = query.eq('user_email', Auth.currentUser.email);
