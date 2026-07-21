@@ -2215,12 +2215,6 @@ const Courier = {
                 start_time: now.toISOString()
             };
 
-            const btn = document.querySelector('#courier-form button[type="submit"]');
-            const originalText = btn ? btn.innerHTML : 'Mulai Jalan';
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'Menyimpan...';
-            }
 
             const { error } = await supabaseClient.from('courier_logs').insert([log]);
             if (error) throw error;
