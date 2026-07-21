@@ -2479,6 +2479,22 @@ const Courier = {
         }
     },
 
+    downloadTemplate() {
+        const data = [{
+            'Timestamp': '2026-07-21 09:00:00',
+            'Email address': 'latiefsn900@gmail.com',
+            'Jam berangkat': '09:00',
+            'Jam Tiba': '10:30',
+            'Dari': 'Serpong',
+            'Ke': 'Harco',
+            'Jarak (km)': 34
+        }];
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        XLSX.writeFile(wb, `Template_Import_Kurir.xlsx`);
+    },
+
     exportToExcel() {
         const tbody = document.querySelector('#courier-table-body');
         if (!tbody || tbody.children.length === 0 || tbody.innerHTML.includes('Belum ada')) {
@@ -2587,17 +2603,25 @@ const Courier = {
                     const to_loc = getCol(row, ['ke', 'tujuan']);
                     let dist = parseFloat(String(getCol(row, ['jarak', 'km'])).replace(',', '.')) || 0;
                     
+                    const parsedStartIso = parseTime(start_time, dateStr);
+                    const parsedEndIso = parseTime(end_time, dateStr);
+                    
+                    let legacyTime = '00:00';
+                    try {
+                         legacyTime = parsedStartIso.split('T')[1].substring(0, 5);
+                    } catch(e) {}
+                    
                     logsToInsert.push({
                         user_email: email,
                         date: dateStr,
-                        time: start_time || '00:00',
+                        time: legacyTime,
                         from_location: from_loc || 'Unknown',
                         to_location: to_loc || 'Unknown',
                         distance_km: dist,
                         amount_rp: Math.round(dist * 300),
                         status: 'selesai',
-                        start_time: parseTime(start_time, dateStr),
-                        end_time: parseTime(end_time, dateStr)
+                        start_time: parsedStartIso,
+                        end_time: parsedEndIso
                     });
                 }
                 
