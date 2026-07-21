@@ -2154,34 +2154,44 @@ const Courier = {
     },
 
     async saveLog() {
-        const fromVal = document.getElementById('courier-from').value;
-        const toVal = document.getElementById('courier-to').value;
-        const distVal = document.getElementById('courier-distance').value;
-        
-        const distanceKm = parseFloat(distVal);
-        const reward = Math.round(distanceKm * 300);
-        
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        
-        const log = {
-            user_email: Auth.currentUser.email,
-            date: dateStr,
-            time: now.toTimeString().substring(0,5), // legacy fallback
-            from_location: fromVal,
-            to_location: toVal,
-            distance_km: distanceKm,
-            amount_rp: reward,
-            status: 'sedang jalan',
-            start_time: now.toISOString()
-        };
-
-        const btn = document.querySelector('#courier-form button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.textContent = 'Menyimpan...';
-
         try {
+            const fromVal = document.getElementById('courier-from').value;
+            const toVal = document.getElementById('courier-to').value;
+            let distVal = document.getElementById('courier-distance').value;
+            
+            // Handle Indonesian comma decimal
+            distVal = distVal.replace(',', '.');
+            const distanceKm = parseFloat(distVal);
+            
+            if (isNaN(distanceKm) || distanceKm <= 0) {
+                showToast('Jarak KM tidak valid. Masukkan angka yang benar.', 'error');
+                return;
+            }
+
+            const reward = Math.round(distanceKm * 300);
+            
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            
+            const log = {
+                user_email: Auth.currentUser ? Auth.currentUser.email : 'unknown',
+                date: dateStr,
+                time: now.toTimeString().substring(0,5), // legacy fallback
+                from_location: fromVal,
+                to_location: toVal,
+                distance_km: distanceKm,
+                amount_rp: reward,
+                status: 'sedang jalan',
+                start_time: now.toISOString()
+            };
+
+            const btn = document.querySelector('#courier-form button[type="submit"]');
+            const originalText = btn ? btn.innerHTML : 'Mulai Jalan';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Menyimpan...';
+            }
+
             const { error } = await supabaseClient.from('courier_logs').insert([log]);
             if (error) throw error;
             
@@ -2193,12 +2203,19 @@ const Courier = {
             document.getElementById('courier-distance').value = '';
             
             this.loadLogs();
+            
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         } catch (e) {
             console.error('Save log error:', e);
-            showToast('Gagal memulai perjalanan: ' + e.message, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            showToast('Gagal memulai perjalanan: ' + (e.message || e), 'error');
+            const btn = document.querySelector('#courier-form button[type="submit"]');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Mulai Jalan';
+            }
         }
     },
 
@@ -2355,27 +2372,41 @@ const Courier = {
     },
 
     async saveEditLog() {
-        const id = document.getElementById('edit-courier-id').value;
-        const fromLoc = document.getElementById('edit-courier-from').value;
-        const toLoc = document.getElementById('edit-courier-to').value;
-        const dist = parseFloat(document.getElementById('edit-courier-distance').value);
-        const reward = Math.round(dist * 300);
+        try {
+            const id = document.getElementById('edit-courier-id').value;
+            const fromLoc = document.getElementById('edit-courier-from').value;
+            const toLoc = document.getElementById('edit-courier-to').value;
+            let distStr = document.getElementById('edit-courier-distance').value;
+            
+            distStr = distStr.replace(',', '.');
+            const dist = parseFloat(distStr);
+            
+            if (isNaN(dist) || dist <= 0) {
+                showToast('Jarak KM tidak valid', 'error');
+                return;
+            }
+            
+            const reward = Math.round(dist * 300);
 
-        const { error } = await supabaseClient.from('courier_logs')
-            .update({
-                from_location: fromLoc,
-                to_location: toLoc,
-                distance_km: dist,
-                amount_rp: reward
-            })
-            .eq('id', id);
+            const { error } = await supabaseClient.from('courier_logs')
+                .update({
+                    from_location: fromLoc,
+                    to_location: toLoc,
+                    distance_km: dist,
+                    amount_rp: reward
+                })
+                .eq('id', id);
 
-        if (error) {
-            showToast('Gagal menyimpan perubahan', 'error');
-        } else {
-            showToast('Perubahan berhasil disimpan', 'success');
-            document.getElementById('edit-courier-modal').style.display = 'none';
-            this.loadLogs();
+            if (error) {
+                showToast('Gagal menyimpan perubahan', 'error');
+            } else {
+                showToast('Perubahan berhasil disimpan', 'success');
+                document.getElementById('edit-courier-modal').style.display = 'none';
+                this.loadLogs();
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Terjadi kesalahan sistem saat menyimpan edit.', 'error');
         }
     },
 

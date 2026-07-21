@@ -399,7 +399,7 @@
             <div id="page-courier" class="page">
                 <div class="header">
                     <h1>🚚 Log Perjalanan Kurir</h1>
-                    <p class="text-muted">Catat rute perjalanan dan hitung jarak otomatis (didukung oleh OSRM)</p>
+                    <p class="text-muted">Catat rute perjalanan secara manual menggunakan fitur pencatat waktu</p>
                         <div class="card-header">
                             <h2>📝 Form Pencatatan</h2>
                         </div>
@@ -415,7 +415,7 @@
                                 </div>
                                 <div style="position: relative; width: 100%; margin-top: 10px;">
                                     <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Jarak (KM)</label>
-                                    <input type="number" id="courier-distance" class="input-field" placeholder="Contoh: 5.5" autocomplete="off" style="width: 100%; font-size: 1.2rem; font-weight: bold; color: var(--accent);" step="0.1" required min="0.1">
+                                    <input type="text" inputmode="decimal" id="courier-distance" class="input-field" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off" style="width: 100%; font-size: 1.2rem; font-weight: bold; color: var(--accent);" required>
                                 </div>
                                 <div style="width: 100%; text-align: right; margin-top: 15px;">
                                     <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 8px;">🚀 Mulai Jalan</button>
@@ -507,7 +507,7 @@
                 <input type="text" id="edit-courier-to" class="input-field" required>
                 
                 <label style="font-size: 0.9em; color: var(--text-secondary);">Jarak (KM)</label>
-                <input type="number" id="edit-courier-distance" class="input-field" step="0.1" required>
+                <input type="text" inputmode="decimal" id="edit-courier-distance" class="input-field" placeholder="Contoh: 5.5" required>
 
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('edit-courier-modal').style.display='none'">Batal</button>
