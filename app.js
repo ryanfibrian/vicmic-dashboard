@@ -499,8 +499,12 @@ const Auth = {
 
         if (this.currentUser.role === 'sales_kurir') {
             document.querySelectorAll('.kurir-form-only').forEach(el => el.style.display = '');
+            const rekap = document.getElementById('courier-rekap-card');
+            if (rekap) rekap.style.gridColumn = '';
         } else {
             document.querySelectorAll('.kurir-form-only').forEach(el => el.style.display = 'none');
+            const rekap = document.getElementById('courier-rekap-card');
+            if (rekap) rekap.style.gridColumn = '1 / -1';
         }
 
         // Hide Reports menu for sales_kurir
