@@ -497,6 +497,12 @@ const Auth = {
             document.querySelectorAll('.courier-only').forEach(el => el.style.display = 'none');
         }
 
+        if (this.currentUser.role === 'sales_kurir') {
+            document.querySelectorAll('.kurir-form-only').forEach(el => el.style.display = '');
+        } else {
+            document.querySelectorAll('.kurir-form-only').forEach(el => el.style.display = 'none');
+        }
+
         // Hide Reports menu for sales_kurir
         const reportsMenu = document.querySelector('.nav-item[data-page="reports"]');
         if (reportsMenu) {
