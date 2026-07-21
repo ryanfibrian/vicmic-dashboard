@@ -497,6 +497,12 @@ const Auth = {
             document.querySelectorAll('.courier-only').forEach(el => el.style.display = 'none');
         }
 
+        // Hide Reports menu for sales_kurir
+        const reportsMenu = document.querySelector('.nav-item[data-page="reports"]');
+        if (reportsMenu) {
+            reportsMenu.style.display = (this.currentUser.role === 'sales_kurir') ? 'none' : '';
+        }
+
         if (this.isSales()) {
             document.body.classList.add('role-sales');
             document.getElementById('btn-toggle-distribusi').style.display = 'inline-block';
@@ -564,10 +570,17 @@ const Router = {
     handleRoute() {
         let page = window.location.hash.replace('#', '') || (Auth.isAdmin() ? 'dashboard' : 'pricelist');
 
-        // Guard: Sales can only see pricelist and reports (and courier if kurir)
-        if (Auth.isSales() && page !== 'pricelist' && page !== 'reports' && !(Auth.isKurir() && page === 'courier')) {
-            window.location.hash = 'pricelist';
-            return;
+        // Guards
+        if (Auth.currentUser && Auth.currentUser.role === 'sales_kurir') {
+            if (page !== 'pricelist' && page !== 'courier') {
+                window.location.hash = 'pricelist';
+                return;
+            }
+        } else if (Auth.currentUser && Auth.currentUser.role === 'sales') {
+            if (page !== 'pricelist' && page !== 'reports') {
+                window.location.hash = 'pricelist';
+                return;
+            }
         }
 
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
