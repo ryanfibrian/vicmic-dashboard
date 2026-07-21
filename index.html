@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=63">
+    <link rel="stylesheet" href="style.css?v=64">
 </head>
 
 <body>
@@ -409,11 +409,17 @@
                         </div>
                         <div class="card-body">
                             <form id="courier-form" class="form-row" style="flex-direction: column;">
-                                <div style="display: flex; gap: 10px; width: 100%;">
-                                    <input type="date" id="courier-date" class="input-field" style="flex: 1;" required>
-                                    <input type="time" id="courier-time" class="input-field" style="flex: 1;" required>
+                                <div style="display: flex; gap: 10px; width: 100%; align-items: center; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 8px; border: 1px dashed var(--border-color);">
+                                    <span style="font-size: 1.2rem;">⏱️</span>
+                                    <div>
+                                        <div style="font-size: 0.85em; color: var(--text-secondary);">Waktu Input</div>
+                                        <div style="font-weight: 500; color: var(--text-primary);">Otomatis (Saat Ini)</div>
+                                    </div>
+                                    <!-- Hidden fields for legacy if needed, or we just remove them -->
+                                    <input type="hidden" id="courier-date" required>
+                                    <input type="hidden" id="courier-time" required>
                                 </div>
-                                <div style="position: relative; width: 100%;">
+                                <div style="position: relative; width: 100%; margin-top: 5px;">
                                     <input type="text" id="courier-from" class="input-field" placeholder="Ketik Lokasi Asal..." autocomplete="off" style="width: 100%;" required>
                                     <div id="autocomplete-from" class="autocomplete-dropdown hidden"></div>
                                 </div>
@@ -511,7 +517,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=63"></script>
+    <script src="app.js?v=64"></script>
 </body>
 
 </html>

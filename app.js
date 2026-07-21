@@ -2172,7 +2172,11 @@ const Courier = {
             // Check cache
             let data = this.cache[query];
             if (!data) {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=5`);
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=5`, {
+                    headers: {
+                        'Accept-Language': 'id'
+                    }
+                });
                 data = await res.json();
                 this.cache[query] = data;
             }
@@ -2256,10 +2260,14 @@ const Courier = {
         const distEl = document.getElementById('courier-distance');
         const rewardEl = document.getElementById('courier-reward');
         
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().substring(0,5);
+
         const log = {
             user_email: Auth.currentUser.email,
-            date: document.getElementById('courier-date').value,
-            time: document.getElementById('courier-time').value,
+            date: dateStr,
+            time: timeStr,
             from_location: document.getElementById('courier-from').value,
             to_location: document.getElementById('courier-to').value,
             distance_km: parseFloat(distEl.dataset.km),
@@ -2319,6 +2327,39 @@ const Courier = {
         let totalKm = 0;
         let totalRp = 0;
 
+        // Filter UI for Admin
+        if (Auth.isAdmin()) {
+            const filterEl = document.getElementById('filter-courier-user');
+            if (filterEl.options.length <= 1) { // Populate only once if empty
+                filterEl.style.display = '';
+                // Extract unique couriers
+                const uniqueEmails = [...new Set(data.map(log => log.user_email))];
+                filterEl.innerHTML = `<option value="">-- Semua Kurir --</option>` + 
+                                     uniqueEmails.map(e => `<option value="${e}">${e}</option>`).join('');
+                
+                // Add event listener (ensure it doesn't duplicate)
+                filterEl.onchange = () => {
+                    const selected = filterEl.value;
+                    const rows = tbody.querySelectorAll('tr');
+                    let fTotalKm = 0;
+                    let fTotalRp = 0;
+                    
+                    rows.forEach(row => {
+                        if (!selected || row.dataset.email === selected) {
+                            row.style.display = '';
+                            fTotalKm += parseFloat(row.dataset.km || 0);
+                            fTotalRp += parseInt(row.dataset.rp || 0);
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                    
+                    document.getElementById('rekap-jarak').textContent = `${fTotalKm.toFixed(2)} KM`;
+                    document.getElementById('rekap-komisi').textContent = formatCurrency(fTotalRp);
+                };
+            }
+        }
+
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Belum ada log perjalanan bulan ini</td></tr>`;
         } else {
@@ -2327,7 +2368,7 @@ const Courier = {
                 totalRp += log.amount_rp;
                 
                 return `
-                <tr>
+                <tr data-email="${log.user_email}" data-km="${log.distance_km}" data-rp="${log.amount_rp}">
                     <td>${log.date} <span style="color:var(--text-muted);font-size:0.9em">${log.time}</span><br>
                         <small style="color:var(--accent)">${Auth.isAdmin() ? log.user_email : ''}</small>
                     </td>
@@ -2341,6 +2382,13 @@ const Courier = {
                 </tr>
                 `;
             }).join('');
+            
+            // If filter is active, trigger change to recalculate summary
+            const filterEl = document.getElementById('filter-courier-user');
+            if (Auth.isAdmin() && filterEl.value) {
+                filterEl.onchange();
+                return; // Summary updated by filter
+            }
         }
 
         document.getElementById('rekap-jarak').textContent = `${totalKm.toFixed(2)} KM`;

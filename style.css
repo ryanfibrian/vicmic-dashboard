@@ -1781,3 +1781,7 @@ body.role-sales .admin-only {
   cursor: default;
   justify-content: center;
 }
+
+#page-courier .glass-card {
+  overflow: visible;
+}
