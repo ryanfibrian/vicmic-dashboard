@@ -205,9 +205,6 @@ export const Auth = {
       .querySelectorAll('.kurir-form-only')
       .forEach((el) => (el.hidden = u.role !== 'sales_kurir'));
 
-    const reportsMenu = document.querySelector('.nav-item[data-page="reports"]');
-    if (reportsMenu) reportsMenu.hidden = u.role === 'sales_kurir';
-
     if (this.isAdmin()) {
       const fw = document.getElementById('admin-courier-filter-wrapper');
       const ca = document.getElementById('admin-courier-actions');

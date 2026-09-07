@@ -50,6 +50,24 @@ function changeScore(p) {
   return dPrice + dStock + (p.isNew ? 1e6 : 0);
 }
 
+// Faceted filters on the left, built from the parsed spec of each row.
+const FACETS = [
+  { key: 'kategori', label: 'Kategori', get: (s) => s.category },
+  { key: 'brand', label: 'Brand', get: (s) => s.brand },
+  { key: 'cpu', label: 'Prosesor', get: (s) => s.cpuFamily },
+  { key: 'ram', label: 'RAM', get: (s) => (s.ramGB ? `${s.ramGB} GB` : null), num: (v) => parseInt(v, 10) },
+  {
+    key: 'storage', label: 'Storage',
+    get: (s) => (s.storageGB ? (s.storageGB >= 1024 ? `${s.storageGB / 1024} TB` : `${s.storageGB} GB`) : null),
+    num: (v) => (v.includes('TB') ? parseFloat(v) * 1024 : parseInt(v, 10)),
+  },
+  { key: 'gpu', label: 'GPU', get: (s) => (s.gpu ? s.gpu.replace(/\s\d+GB$/, '') : s.gpuType === 'Integrated' ? 'Integrated' : null) },
+  { key: 'layar', label: 'Ukuran Layar', get: (s) => s.screen, num: (v) => parseFloat(v) },
+  { key: 'resolusi', label: 'Resolusi', get: (s) => s.resolution },
+  { key: 'panel', label: 'Panel', get: (s) => s.panel },
+  { key: 'os', label: 'OS', get: (s) => s.os },
+];
+
 // Compact currency delta: 1_250_000 -> "1,3jt", 180_000 -> "180rb".
 function compactMoney(n) {
   const abs = Math.abs(n);
@@ -107,6 +125,9 @@ export const PriceList = {
   chip: 'all',
   costVisible: null,
   expanded: new Set(),
+  facets: {}, // facetKey -> Set of selected values
+  facetOpen: new Set(['brand', 'cpu']),
+  _facetData: [],
   _wired: false,
   _currentDate: null,
 
@@ -151,16 +172,20 @@ export const PriceList = {
       `Menampilkan <strong>${formatDate(actualDate)}${fallback ? ' (terbaru)' : ''}</strong>` +
       ` · dibandingkan <strong>${prevObj ? formatDate(prevObj.date) : 'tidak ada'}</strong>`;
 
-    this.all = rows.map((p) => {
-      const prev = prevMap.get(p.deskripsi.toLowerCase());
+    const build = (p, prev, gone) => {
       const spec = parseNotebookTitle(p.deskripsi);
       return {
         ...p,
+        _key: (p.sku || '') + '|' + p.deskripsi,
         spec,
         specText: specSearchText(spec),
+        isGone: !!gone,
+        total: gone ? 0 : p.total,
+        harco: gone ? 0 : p.harco,
+        serpong: gone ? 0 : p.serpong,
         hargaOnline: PriceCalc.hargaOnline(p.distribusi),
         hargaOffline: PriceCalc.hargaOffline(p.distribusi),
-        isNew: !prev,
+        isNew: !gone && !prev,
         prevDistribusi: prev ? prev.distribusi : null,
         prevHargaOnline: prev ? PriceCalc.hargaOnline(prev.distribusi) : null,
         prevHargaOffline: prev ? PriceCalc.hargaOffline(prev.distribusi) : null,
@@ -169,6 +194,16 @@ export const PriceList = {
         prevTotal: prev ? prev.total : null,
         prevPromo: prev ? prev.promo_sellout : null,
       };
+    };
+
+    const todayKeys = new Set(rows.map((p) => p.deskripsi.toLowerCase()));
+    this.all = rows.map((p) => build(p, prevMap.get(p.deskripsi.toLowerCase())));
+
+    // Keep yesterday's items that are gone today, flagged HABIS (not silently dropped).
+    (prevObj?.data || []).forEach((prev) => {
+      if (!todayKeys.has(prev.deskripsi.toLowerCase())) {
+        this.all.push(build({ ...prev, no: 100000 + this.all.length }, prev, true));
+      }
     });
 
     this.apply();
@@ -215,6 +250,36 @@ export const PriceList = {
       this.apply();
     });
 
+    on('btn-pl-filter', 'click', () =>
+      document.getElementById('pl-facets')?.classList.toggle('open-mobile')
+    );
+
+    // Facet panel (delegated).
+    document.getElementById('pl-facets')?.addEventListener('click', (e) => {
+      const toggle = e.target.closest('.facet-title');
+      if (toggle) {
+        const key = toggle.dataset.toggle;
+        if (this.facetOpen.has(key)) this.facetOpen.delete(key);
+        else this.facetOpen.add(key);
+        toggle.closest('.facet-group').classList.toggle('open');
+        return;
+      }
+      if (e.target.id === 'pl-facets-reset') {
+        this.facets = {};
+        this.apply();
+      }
+    });
+    document.getElementById('pl-facets')?.addEventListener('change', (e) => {
+      const cb = e.target.closest('input[data-facet]');
+      if (!cb) return;
+      const key = cb.dataset.facet;
+      const set = (this.facets[key] = this.facets[key] || new Set());
+      if (cb.checked) set.add(cb.value);
+      else set.delete(cb.value);
+      if (!set.size) delete this.facets[key];
+      this.apply();
+    });
+
     document.querySelectorAll('#page-pricelist .chip').forEach((c) =>
       c.addEventListener('click', () => {
         this.chip = c.dataset.filter;
@@ -248,22 +313,88 @@ export const PriceList = {
     });
   },
 
+  chipPass(p) {
+    switch (this.chip) {
+      case 'new': return p.isNew;
+      case 'price-changed': return p.prevDistribusi != null && p.distribusi !== p.prevDistribusi;
+      case 'stock-low': return (p.total || 0) > 0 && (p.total || 0) <= 5;
+      case 'oos': return (p.total || 0) <= 0 || p.isGone;
+      default: return true;
+    }
+  },
+
   apply() {
     this._tokens = tokenize(this.search);
-    this.filtered = this.all.filter((p) => {
-      if (!smartMatch(this._tokens, p)) return false;
-      switch (this.chip) {
-        case 'new': return p.isNew;
-        case 'price-changed': return p.prevDistribusi != null && p.distribusi !== p.prevDistribusi;
-        case 'stock-low': return (p.total || 0) > 0 && (p.total || 0) <= 5;
-        case 'oos': return (p.total || 0) <= 0;
-        default: return true;
+    const base = this.all.filter((p) => smartMatch(this._tokens, p) && this.chipPass(p));
+
+    // Facet options + counts from the search/chip-filtered set.
+    this._facetData = FACETS.map((f) => {
+      const counts = new Map();
+      for (const p of base) {
+        const v = f.get(p.spec);
+        if (v == null || v === '') continue;
+        counts.set(v, (counts.get(v) || 0) + 1);
       }
-    });
+      const opts = [...counts.entries()].map(([value, count]) => ({ value, count }));
+      opts.sort(
+        f.num
+          ? (a, b) => f.num(a.value) - f.num(b.value)
+          : (a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value))
+      );
+      return { ...f, opts };
+    }).filter((f) => f.opts.length > 1);
+
+    // Apply selected facets: AND across groups, OR within a group.
+    this.filtered = base.filter((p) =>
+      FACETS.every((f) => {
+        const sel = this.facets[f.key];
+        if (!sel || !sel.size) return true;
+        const v = f.get(p.spec);
+        return v != null && sel.has(v);
+      })
+    );
 
     this.filtered.sort(SORTS[this.sort] || SORTS.no);
     this.renderList();
     this.renderMeta();
+    this.renderFacets();
+  },
+
+  renderFacets() {
+    const el = document.getElementById('pl-facets');
+    if (!el) return;
+    const scroll = el.scrollTop;
+    const active = Object.values(this.facets).reduce((n, s) => n + (s?.size || 0), 0);
+
+    let html = `<div class="facets-head"><span>Filter Spesifikasi</span>${
+      active ? `<button class="facets-reset" id="pl-facets-reset">Reset (${active})</button>` : ''
+    }</div>`;
+
+    if (!this._facetData.length) {
+      html += `<p class="facets-empty">Belum ada data untuk difilter.</p>`;
+    }
+
+    for (const f of this._facetData) {
+      const open = this.facetOpen.has(f.key);
+      const sel = this.facets[f.key] || new Set();
+      html += `<div class="facet-group${open ? ' open' : ''}" data-group="${f.key}">
+        <button type="button" class="facet-title" data-toggle="${f.key}">
+          <span>${f.label}${sel.size ? ` <span class="facet-badge">${sel.size}</span>` : ''}</span>
+          <span class="facet-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="facet-opts">${f.opts
+          .map(
+            (o) => `<label class="facet-opt">
+              <input type="checkbox" data-facet="${f.key}" value="${escapeHtml(o.value)}" ${sel.has(o.value) ? 'checked' : ''}>
+              <span class="facet-opt-label">${escapeHtml(o.value)}</span>
+              <span class="facet-opt-count">${o.count}</span>
+            </label>`
+          )
+          .join('')}</div>
+      </div>`;
+    }
+    el.innerHTML = html;
+    el.scrollTop = scroll;
   },
 
   renderMeta() {
@@ -285,12 +416,18 @@ export const PriceList = {
       return;
     }
     const metrics = this.visibleMetrics();
-    container.innerHTML = this.filtered.map((p, i) => this.renderRow(p, i, metrics)).join('');
+    container.innerHTML = this.filtered.map((p) => this.renderRow(p, metrics)).join('');
   },
 
-  renderRow(p, i, metrics) {
-    const idx = String(p.no ?? i);
+  renderRow(p, metrics) {
+    const idx = p._key;
     const open = this.expanded.has(idx);
+    const t = p.total || 0;
+    let tag = '';
+    if (p.isNew) tag = '<span class="tag tag-new">BARU</span> ';
+    else if (p.isGone) tag = '<span class="tag tag-danger">HABIS</span> ';
+    else if (t <= 0) tag = '<span class="tag tag-danger">HABIS</span> ';
+    else if (t <= 5) tag = '<span class="tag tag-warning">MENIPIS</span> ';
 
     const stats = metrics
       .map((m) => {
@@ -313,9 +450,9 @@ export const PriceList = {
     const name = highlight(escapeHtml(p.deskripsi), this._tokens || []);
 
     return `
-      <article class="pl-row${open ? ' is-open' : ''}" data-idx="${escapeHtml(idx)}">
+      <article class="pl-row${open ? ' is-open' : ''}${p.isGone ? ' is-gone' : ''}" data-idx="${escapeHtml(idx)}">
         <button class="pl-row-head" aria-expanded="${open}">
-          <span class="pl-name">${p.isNew ? '<span class="tag tag-new">BARU</span> ' : ''}${name}</span>
+          <span class="pl-name">${tag}${name}</span>
           <span class="pl-caret" aria-hidden="true">▾</span>
         </button>
         <div class="pl-stats">${stats}${promo}</div>

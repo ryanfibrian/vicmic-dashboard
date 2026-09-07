@@ -9,6 +9,7 @@
 // ============================================================================
 
 import { DB } from '../db.js';
+import { Auth } from '../auth.js';
 import { PriceCalc } from '../priceCalc.js';
 import { formatNumber, formatCurrency, formatDate, escapeHtml } from '../utils.js';
 import { showLoading, copyToClipboard } from '../ui.js';
@@ -40,15 +41,25 @@ export const Dashboard = {
     const prevMap = new Map(prev.map((p) => [p.deskripsi.toLowerCase(), p]));
     const curKeys = new Set(rows.map((p) => p.deskripsi.toLowerCase()));
 
+    // Non-admins never see cost (distribusi); price panels use Harga Online.
+    const showCost = Auth.isAdmin();
+    this._showCost = showCost;
+
     // Build a per-item diff model once.
     const model = rows.map((p) => {
       const before = prevMap.get(p.deskripsi.toLowerCase()) || null;
+      const online = PriceCalc.hargaOnline(p.distribusi);
+      const beforeOnline = before ? PriceCalc.hargaOnline(before.distribusi) : 0;
+      const price = showCost ? p.distribusi : online;
+      const beforePrice = showCost ? (before ? before.distribusi : 0) : beforeOnline;
       return {
         ...p,
         before,
         isNew: !before,
-        hargaOnline: PriceCalc.hargaOnline(p.distribusi),
-        priceDiff: before ? p.distribusi - before.distribusi : 0,
+        hargaOnline: online,
+        price,
+        beforePrice,
+        priceDiff: before ? price - beforePrice : 0,
         stockDiff: before ? (p.total || 0) - (before.total || 0) : 0,
       };
     });
@@ -101,8 +112,9 @@ export const Dashboard = {
       return;
     }
 
+    const label = this._showCost ? 'harga distribusi' : 'harga online';
     box.innerHTML =
-      `<div class="alert-count"><span>${moves.length} harga berubah</span></div>` +
+      `<div class="alert-count"><span>${moves.length} ${label} berubah</span></div>` +
       moves
         .slice(0, 60)
         .map((p) => {
@@ -111,9 +123,9 @@ export const Dashboard = {
           <div class="alert-item">
             <div class="alert-product">${escapeHtml(p.deskripsi)}</div>
             <div class="alert-prices">
-              <span class="alert-old">${formatCurrency(p.before.distribusi)}</span>
+              <span class="alert-old">${formatCurrency(p.beforePrice)}</span>
               <span class="alert-arrow ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'}</span>
-              <span class="alert-new">${formatCurrency(p.distribusi)}</span>
+              <span class="alert-new">${formatCurrency(p.price)}</span>
             </div>
             <div class="alert-diff ${up ? 'is-up' : 'is-down'}">${up ? '+' : '−'}${formatCurrency(Math.abs(p.priceDiff))}</div>
           </div>`;
@@ -216,7 +228,7 @@ export const Dashboard = {
           <div class="alert-product"><span class="tag tag-new">BARU</span> ${escapeHtml(p.deskripsi)}</div>
           <div class="alert-prices">
             <span class="pl-k">Stok</span> <span class="alert-new">${p.total || 0}</span>
-            <span class="pl-k">Online</span> <span class="alert-new">${formatCurrency(p.hargaOnline || p.distribusi || 0)}</span>
+            <span class="pl-k">Online</span> <span class="alert-new">${formatCurrency(p.hargaOnline || 0)}</span>
           </div>
         </div>`
         )

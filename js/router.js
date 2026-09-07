@@ -5,16 +5,15 @@
 import { Auth } from './auth.js';
 import { Dashboard } from './pages/dashboard.js';
 import { PriceList } from './pages/pricelist.js';
-import { Reports } from './pages/reports.js';
 import { UserManagement } from './pages/users.js';
 import { Upload } from './pages/upload.js';
 import { Settings } from './pages/settings.js';
 import { Courier } from './pages/courier.js';
 
 const ACCESS = {
-  admin: ['dashboard', 'pricelist', 'reports', 'users', 'upload', 'settings', 'courier'],
-  sales: ['pricelist', 'reports'],
-  sales_kurir: ['pricelist', 'courier'],
+  admin: ['dashboard', 'pricelist', 'users', 'upload', 'settings', 'courier'],
+  sales: ['dashboard', 'pricelist'],
+  sales_kurir: ['dashboard', 'pricelist', 'courier'],
 };
 
 export const Router = {
@@ -67,7 +66,6 @@ export const Router = {
       switch (page) {
         case 'dashboard': return void (await Dashboard.render());
         case 'pricelist': return void (await PriceList.render());
-        case 'reports': return void (await Reports.render());
         case 'users': return void (await UserManagement.render());
         case 'upload': return void (await Upload.render());
         case 'settings': return void (await Settings.render());
