@@ -13,31 +13,32 @@ Urutan penting.
 
 ---
 
-## 1. Aktifkan login Google di Supabase Auth
+## 1. Login Google di Supabase Auth
 
 Frontend baru memakai `supabase.auth.signInWithIdToken()` supaya Supabase menerbitkan JWT
 asli (berisi email terverifikasi). Tanpa ini, RLS tidak punya email untuk dicek.
 
-1. Buka **Authentication → Sign In / Providers → Google**, aktifkan.
-2. **Client ID (for OAuth)**: pakai Google Client ID yang sudah dipakai aplikasi:
-   `330235446046-t1omv0pvrkusl8k5dqnd37jhu1h62j2s.apps.googleusercontent.com`
-3. **Client Secret**: ambil dari [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-   → OAuth 2.0 Client ID yang sama → *Client secret*. Kalau memang mau pakai alur
-   `signInWithIdToken` murni (tanpa redirect), secret boleh dikosongkan — tapi isi saja
-   supaya kedua alur jalan.
-4. Di bagian **Authorized Client IDs** (Supabase, khusus Google), tambahkan Client ID yang
-   sama. Ini yang dipakai untuk memvalidasi ID token dari tombol Google di halaman login.
-5. Di **Google Cloud Console → Credentials → OAuth client → Authorized JavaScript origins**,
-   pastikan ada:
-   - `https://vicmic-dashboard.vercel.app`
-   - `http://localhost:3000` dan `http://localhost:8000` (untuk tes lokal)
-   Dan **Authorized redirect URIs**:
-   - `https://dpnndfgeyuqblpbfzlii.supabase.co/auth/v1/callback`
-6. Di **Authentication → URL Configuration**, set **Site URL** ke
-   `https://vicmic-dashboard.vercel.app` dan tambahkan `http://localhost:8000/**` ke
-   **Redirect URLs**.
+**Status per September 2026:** provider Google di project `dpnndfgeyuqblpbfzlii` **sudah
+aktif** dengan Client ID
+`656289786823-iu0ffgvhl95giho0v3ei5fdbpvtntbec.apps.googleusercontent.com` dan secret sudah
+terisi. `js/config.js` juga sudah memakai Client ID ini. Jadi yang tersisa hanya satu hal:
 
-> Tidak perlu mematikan "Confirm email" — login Google tidak butuh itu.
+1. **Google Cloud Console → APIs & Services → Credentials → OAuth client
+   "Supabase Auth Client"** (`656289786823-...`) → **Authorized JavaScript origins**,
+   tambahkan (jangan hapus yang sudah ada):
+   - `https://vicmic-dashboard.vercel.app`
+   - `http://localhost:8000` (opsional, untuk tes lokal)
+   Lalu **Save**. Perubahan origin bisa butuh 5 menit–beberapa jam untuk aktif.
+2. *(Opsional, biar rapi)* **Authorized redirect URIs** tambahkan
+   `https://dpnndfgeyuqblpbfzlii.supabase.co/auth/v1/callback`.
+3. *(Opsional)* Supabase **Authentication → URL Configuration**: **Site URL** =
+   `https://vicmic-dashboard.vercel.app`.
+4. Kalau nanti login gagal dengan error soal **nonce**, buka Supabase → Auth → Providers →
+   Google, nyalakan **Skip nonce checks**, Save.
+
+> Entri origin lama `https://tbsgctmcbaxgkttlriml.supabase.co` (project Supabase lama yang
+> tidak terpakai) boleh dibiarkan — tidak mengganggu.
+> Tidak perlu mengubah "Confirm email" — login Google tidak butuh itu.
 
 ---
 

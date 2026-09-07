@@ -19,8 +19,10 @@ export const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABAS
 });
 
 export const CONFIG = {
+  // Must match the "Client IDs" list in Supabase → Auth → Providers → Google
+  // for project dpnndfgeyuqblpbfzlii.
   GOOGLE_CLIENT_ID:
-    '330235446046-t1omv0pvrkusl8k5dqnd37jhu1h62j2s.apps.googleusercontent.com',
+    '656289786823-iu0ffgvhl95giho0v3ei5fdbpvtntbec.apps.googleusercontent.com',
 
   // Fallback courier commission when app_settings.courier_rate_per_km is missing.
   DEFAULT_COURIER_RATE_PER_KM: 300,
