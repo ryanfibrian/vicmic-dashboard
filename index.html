@@ -159,57 +159,29 @@
 
                 <div id="kpi-grid" class="kpi-grid"></div>
 
-                <div class="dashboard-grid">
-                    <div class="card">
-                        <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>💰 Perubahan Harga</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        </div>
-                        <div class="card-body scrollable" id="dash-price-moves">
-                            <div class="empty-state-sm">Belum ada data</div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>⚠️ Perlu Perhatian — Stok</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        </div>
-                        <div class="card-body scrollable" id="dash-stock-attention">
-                            <div class="empty-state-sm">Belum ada data</div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>🚚 Tarik ke Serpong</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-wrapper table-scroll-y">
-                                <table class="data-table">
-                                    <thead><tr><th class="col-deskripsi">Nama Barang</th><th class="num">Srp</th><th class="num">Hrc</th></tr></thead>
-                                    <tbody id="pull-serpong-body"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>🔄 Retur ke Harco</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-wrapper table-scroll-y">
-                                <table class="data-table">
-                                    <thead><tr><th class="col-deskripsi">Nama Barang</th><th class="num">Srp</th><th class="num">Hrc</th></tr></thead>
-                                    <tbody id="return-harco-body"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card dashboard-grid-full">
-                        <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>✨ Barang Baru Hari Ini</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        </div>
-                        <div class="card-body scrollable" id="dash-new-items">
-                            <div class="empty-state-sm">Belum ada data</div>
-                        </div>
-                    </div>
+                <div class="dash-blocks">
+                    <section class="card dash-block" id="dash-block-stock">
+                        <div class="dash-block-head"><h2>⚠️ Perlu Perhatian — Stok</h2><span class="dash-count" id="dc-stock"></span></div>
+                        <div id="dash-stock-attention"></div>
+                    </section>
+
+                    <section class="card dash-block" id="dash-block-price">
+                        <div class="dash-block-head"><h2>💰 Perubahan Harga</h2><span class="dash-count" id="dc-price"></span></div>
+                        <div id="dash-price-moves"></div>
+                    </section>
+
+                    <section class="card dash-block" id="dash-block-rebalance">
+                        <div class="dash-block-head"><h2>🔁 Rebalance Cabang</h2></div>
+                        <div class="dash-sub">Tarik ke Serpong</div>
+                        <div id="dash-pull-serpong"></div>
+                        <div class="dash-sub">Retur ke Harco</div>
+                        <div id="dash-return-harco"></div>
+                    </section>
+
+                    <section class="card dash-block" id="dash-block-new">
+                        <div class="dash-block-head"><h2>✨ Barang Baru Hari Ini</h2><span class="dash-count" id="dc-new"></span></div>
+                        <div id="dash-new-items"></div>
+                    </section>
                 </div>
             </section>
 

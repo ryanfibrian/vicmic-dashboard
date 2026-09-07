@@ -1,16 +1,20 @@
 // ============================================================================
-// pages/dashboard.js — decision-focused daily overview. No vanity charts; every
-// panel answers "what do I need to act on today?":
-//   - KPI strip: today's shape + what moved
-//   - Perubahan Harga: biggest price moves (repricing / margin)
-//   - Perlu Perhatian – Stok: out of stock, running low, big drops (reorder)
-//   - Rebalance Cabang: pull to Serpong / return to Harco (logistics)
-//   - Barang Baru: what landed today (what to push)
+// pages/dashboard.js — decision-focused daily overview.
+//
+// Layout: KPI strip, then full-width stacked blocks (no ragged 2-column grid).
+// Every block is a table capped to N rows with a "Lihat semua" expander, so the
+// page has a predictable rhythm regardless of how much moved that day.
+//   - Perlu Perhatian – Stok : habis / hilang / menipis / turun drastis
+//   - Perubahan Harga        : biggest moves (online price for non-admins)
+//   - Rebalance Cabang       : tarik ke Serpong / retur ke Harco
+//   - Barang Baru Hari Ini   : stock + online price
+// KPI cards jump to the price list pre-filtered.
 // ============================================================================
 
 import { DB } from '../db.js';
 import { Auth } from '../auth.js';
 import { PriceCalc } from '../priceCalc.js';
+import { PriceList } from './pricelist.js';
 import { formatNumber, formatCurrency, formatDate, escapeHtml } from '../utils.js';
 import { showLoading, copyToClipboard } from '../ui.js';
 
@@ -18,19 +22,35 @@ const LOW_STOCK = 5;
 
 export const Dashboard = {
   _wired: false,
+  _blocks: {}, // id -> { head, rows, cap }
 
   async render() {
     if (!this._wired) {
       this._wired = true;
       document.getElementById('btn-dash-refresh')?.addEventListener('click', (e) => {
-        const b = e.currentTarget;
-        b.disabled = true;
-        this.render().finally(() => (b.disabled = false));
+        e.currentTarget.disabled = true;
+        this.render().finally(() => (e.currentTarget.disabled = false));
+      });
+      document.getElementById('kpi-grid')?.addEventListener('click', (e) => {
+        const card = e.target.closest('.kpi-card.is-link');
+        if (!card) return;
+        PriceList.pendingChip = card.dataset.jump;
+        window.location.hash = 'pricelist';
+      });
+      document.querySelector('#page-dashboard .dash-blocks')?.addEventListener('click', (e) => {
+        const more = e.target.closest('.dash-more');
+        if (more) {
+          const id = more.dataset.for;
+          this._blocks[id].cap = Infinity;
+          this.paint(id);
+          return;
+        }
+        const copy = e.target.closest('[data-copy]');
+        if (copy) copyToClipboard(copy.dataset.copy, 'Tersalin');
       });
     }
 
-    const grid = document.getElementById('kpi-grid');
-    showLoading(grid, 'Memuat dashboard…');
+    showLoading(document.getElementById('kpi-grid'), 'Memuat dashboard…');
 
     const dateStr = (await DB.getAllDates())[0] || formatDate(new Date());
     document.getElementById('dashboard-date-label').textContent = formatDate(dateStr);
@@ -41,17 +61,12 @@ export const Dashboard = {
     const prevMap = new Map(prev.map((p) => [p.deskripsi.toLowerCase(), p]));
     const curKeys = new Set(rows.map((p) => p.deskripsi.toLowerCase()));
 
-    // Non-admins never see cost (distribusi); price panels use Harga Online.
     const showCost = Auth.isAdmin();
-    this._showCost = showCost;
-
-    // Build a per-item diff model once.
     const model = rows.map((p) => {
       const before = prevMap.get(p.deskripsi.toLowerCase()) || null;
       const online = PriceCalc.hargaOnline(p.distribusi);
-      const beforeOnline = before ? PriceCalc.hargaOnline(before.distribusi) : 0;
       const price = showCost ? p.distribusi : online;
-      const beforePrice = showCost ? (before ? before.distribusi : 0) : beforeOnline;
+      const beforePrice = before ? (showCost ? before.distribusi : PriceCalc.hargaOnline(before.distribusi)) : 0;
       return {
         ...p,
         before,
@@ -65,34 +80,36 @@ export const Dashboard = {
     });
     const disappeared = prev.filter((p) => !curKeys.has(p.deskripsi.toLowerCase()));
 
-    this.renderKPIs(model, disappeared);
-    this.renderPriceMoves(model);
-    this.renderStockAttention(model, disappeared);
-    this.renderRebalance(rows);
-    this.renderNewItems(model);
+    this.renderKPIs(model, disappeared, showCost);
+    this.buildStock(model, disappeared);
+    this.buildPrice(model, showCost);
+    this.buildRebalance(rows);
+    this.buildNew(model);
   },
 
-  renderKPIs(model, disappeared) {
+  // ---- KPI strip ------------------------------------------------------
+  renderKPIs(model, disappeared, showCost) {
     const totalStock = model.reduce((s, p) => s + (p.total || 0), 0);
     const up = model.filter((p) => p.before && p.priceDiff > 0).length;
     const down = model.filter((p) => p.before && p.priceDiff < 0).length;
     const newCount = model.filter((p) => p.isNew).length;
-    const lowCount = model.filter((p) => (p.total || 0) > 0 && (p.total || 0) <= LOW_STOCK).length;
+    const low = model.filter((p) => (p.total || 0) > 0 && (p.total || 0) <= LOW_STOCK).length;
+    const oos = model.filter((p) => (p.total || 0) <= 0).length + disappeared.length;
 
     const kpis = [
       { label: 'Tipe Produk', value: model.length, icon: '📦', accent: 'var(--accent)' },
-      { label: 'Stok Global', value: totalStock, icon: '🌍', accent: '#a78bfa' },
-      { label: 'Harga Naik', value: up, icon: '📈', accent: 'var(--success)' },
-      { label: 'Harga Turun', value: down, icon: '📉', accent: 'var(--danger)' },
-      { label: 'Barang Baru', value: newCount, icon: '✨', accent: '#38bdf8' },
-      { label: 'Stok Menipis', value: lowCount, icon: '⚠️', accent: 'var(--warning)' },
-      { label: 'Barang Habis', value: disappeared.length, icon: '🚫', accent: 'var(--danger)' },
+      { label: 'Stok Global', value: totalStock, icon: '🌍', accent: '#7c3aed' },
+      { label: 'Harga Naik', value: up, icon: '📈', accent: 'var(--up)', jump: 'price-changed' },
+      { label: 'Harga Turun', value: down, icon: '📉', accent: 'var(--down)', jump: 'price-changed' },
+      { label: 'Barang Baru', value: newCount, icon: '✨', accent: '#0891b2', jump: 'new' },
+      { label: 'Stok Menipis', value: low, icon: '⚠️', accent: 'var(--warning)', jump: 'stock-low' },
+      { label: 'Barang Habis', value: oos, icon: '🚫', accent: 'var(--danger)', jump: 'oos' },
     ];
 
     document.getElementById('kpi-grid').innerHTML = kpis
       .map(
         (k) => `
-        <div class="kpi-card" style="--card-accent:${k.accent}">
+        <div class="kpi-card${k.jump ? ' is-link' : ''}" ${k.jump ? `data-jump="${k.jump}"` : ''} style="--card-accent:${k.accent}">
           <div class="kpi-icon" aria-hidden="true">${k.icon}</div>
           <div class="kpi-value">${formatNumber(k.value)}</div>
           <div class="kpi-label">${k.label}</div>
@@ -101,84 +118,99 @@ export const Dashboard = {
       .join('');
   },
 
-  renderPriceMoves(model) {
-    const moves = model
-      .filter((p) => p.before && p.priceDiff !== 0)
-      .sort((a, b) => Math.abs(b.priceDiff) - Math.abs(a.priceDiff));
-
-    const box = document.getElementById('dash-price-moves');
-    if (!moves.length) {
-      box.innerHTML = '<div class="empty-state-sm">Tidak ada perubahan harga hari ini</div>';
-      return;
-    }
-
-    const label = this._showCost ? 'harga distribusi' : 'harga online';
-    box.innerHTML =
-      `<div class="alert-count"><span>${moves.length} ${label} berubah</span></div>` +
-      moves
-        .slice(0, 60)
-        .map((p) => {
-          const up = p.priceDiff > 0;
-          return `
-          <div class="alert-item">
-            <div class="alert-product">${escapeHtml(p.deskripsi)}</div>
-            <div class="alert-prices">
-              <span class="alert-old">${formatCurrency(p.beforePrice)}</span>
-              <span class="alert-arrow ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'}</span>
-              <span class="alert-new">${formatCurrency(p.price)}</span>
-            </div>
-            <div class="alert-diff ${up ? 'is-up' : 'is-down'}">${up ? '+' : '−'}${formatCurrency(Math.abs(p.priceDiff))}</div>
-          </div>`;
-        })
-        .join('');
+  // ---- generic block renderer --------------------------------------
+  register(id, headers, rows, cap, countId) {
+    this._blocks[id] = { headers, rows, cap };
+    if (countId) document.getElementById(countId).textContent = rows.length || '';
+    this.paint(id);
   },
 
-  renderStockAttention(model, disappeared) {
+  paint(id) {
+    const el = document.getElementById(id);
+    const b = this._blocks[id];
+    if (!el || !b) return;
+    const parent = el.closest('.dash-block') || el.parentElement;
+    parent.querySelector(`.dash-more[data-for="${id}"]`)?.remove();
+
+    if (!b.rows.length) {
+      el.innerHTML = `<table class="dash-table"><tbody><tr><td class="cell-empty">Tidak ada</td></tr></tbody></table>`;
+      return;
+    }
+    const shown = b.rows.slice(0, b.cap);
+    el.innerHTML = `<table class="dash-table">
+      <thead><tr>${b.headers.map((h) => `<th class="${h.cls || ''}">${h.label ?? h}</th>`).join('')}</tr></thead>
+      <tbody>${shown.join('')}</tbody></table>`;
+    if (b.rows.length > b.cap) {
+      const btn = document.createElement('button');
+      btn.className = 'dash-more';
+      btn.dataset.for = id;
+      btn.textContent = `Lihat semua (${b.rows.length})`;
+      el.after(btn);
+    }
+  },
+
+  // ---- blocks -----------------------------------------------------
+  buildStock(model, disappeared) {
     const items = [];
     model.forEach((p) => {
       const t = p.total || 0;
-      if (t <= 0) items.push({ p, kind: 'oos', weight: 100 });
-      else if (t <= LOW_STOCK) items.push({ p, kind: 'low', weight: 50 - t });
-      else if (p.before && p.stockDiff <= -10) items.push({ p, kind: 'drop', weight: Math.abs(p.stockDiff) / 10 });
+      if (t <= 0) items.push({ p, kind: 'oos', w: 100 });
+      else if (t <= LOW_STOCK) items.push({ p, kind: 'low', w: 50 - t });
+      else if (p.before && p.stockDiff <= -10) items.push({ p, kind: 'drop', w: Math.abs(p.stockDiff) / 10 });
     });
-    disappeared.forEach((p) => items.push({ p, kind: 'gone', weight: 90 }));
-    items.sort((a, b) => b.weight - a.weight);
+    disappeared.forEach((p) => items.push({ p, kind: 'gone', w: 90 }));
+    items.sort((a, b) => b.w - a.w);
 
-    const box = document.getElementById('dash-stock-attention');
-    if (!items.length) {
-      box.innerHTML = '<div class="empty-state-sm">Tidak ada stok yang perlu perhatian</div>';
-      return;
-    }
-
-    const tag = {
+    const TAG = {
       oos: '<span class="tag tag-danger">HABIS</span>',
       gone: '<span class="tag tag-danger">HILANG</span>',
       low: '<span class="tag tag-warning">MENIPIS</span>',
       drop: '<span class="tag tag-warning">TURUN</span>',
     };
-
-    box.innerHTML =
-      `<div class="alert-count"><span>${items.length} butuh perhatian</span></div>` +
-      items
-        .slice(0, 60)
-        .map(({ p, kind }) => {
-          const t = p.total || 0;
-          const detail =
-            kind === 'gone'
-              ? 'tidak ada di data hari ini'
-              : kind === 'drop'
-              ? `${p.before.total} → ${t} (${p.stockDiff})`
-              : `sisa ${t} (Srp ${p.serpong ?? 0} · Hrc ${p.harco ?? 0})`;
-          return `
-          <div class="alert-item">
-            <div class="alert-product">${tag[kind] || ''} ${escapeHtml(p.deskripsi)}</div>
-            <div class="stock-detail">${detail}</div>
-          </div>`;
-        })
-        .join('');
+    const rows = items.map(({ p, kind }) => {
+      const t = p.total || 0;
+      const detail =
+        kind === 'gone'
+          ? 'tidak ada di data hari ini'
+          : kind === 'drop'
+          ? `${p.before.total} → ${t}`
+          : `sisa ${t} · Srp ${p.serpong ?? 0} / Hrc ${p.harco ?? 0}`;
+      const delta = p.before && p.stockDiff !== 0
+        ? `<span class="delta-chip ${p.stockDiff > 0 ? 'up' : 'down'}">${p.stockDiff > 0 ? '▲' : '▼'} ${Math.abs(p.stockDiff)}</span>`
+        : '';
+      return `<tr>
+        <td class="t-name">${escapeHtml(p.deskripsi)}</td>
+        <td>${TAG[kind] || ''}</td>
+        <td class="t-sub">${detail} ${delta}</td>
+      </tr>`;
+    });
+    this.register('dash-stock-attention', ['Barang', { label: 'Status' }, { label: 'Detail' }], rows, 10, 'dc-stock');
   },
 
-  renderRebalance(rows) {
+  buildPrice(model, showCost) {
+    const moves = model
+      .filter((p) => p.before && p.priceDiff !== 0)
+      .sort((a, b) => Math.abs(b.priceDiff) - Math.abs(a.priceDiff));
+    const rows = moves.map((p) => {
+      const upd = p.priceDiff > 0;
+      return `<tr>
+        <td class="t-name">${escapeHtml(p.deskripsi)}</td>
+        <td class="t-num t-sub">${formatCurrency(p.beforePrice)}</td>
+        <td class="t-num t-today ${upd ? 'is-up' : 'is-down'}">${formatCurrency(p.price)}</td>
+        <td class="t-num ${upd ? 'is-up' : 'is-down'}">${upd ? '+' : '−'}${formatCurrency(Math.abs(p.priceDiff))}</td>
+      </tr>`;
+    });
+    const priceLabel = showCost ? 'Distribusi' : 'Online';
+    this.register(
+      'dash-price-moves',
+      ['Barang', { label: `${priceLabel} kemarin`, cls: 't-num' }, { label: 'Hari ini', cls: 't-num' }, { label: 'Selisih', cls: 't-num' }],
+      rows,
+      10,
+      'dc-price'
+    );
+  },
+
+  buildRebalance(rows) {
     const pull = [];
     const ret = [];
     rows.forEach((item) => {
@@ -190,48 +222,27 @@ export const Dashboard = {
     pull.sort((a, b) => (b.harco || 0) - (a.harco || 0));
     ret.sort((a, b) => (a.harco || 0) - (b.harco || 0));
 
-    const row = (item) => `
-      <tr>
-        <td class="col-deskripsi">${escapeHtml(item.deskripsi)}
-          <button class="btn-inline" data-copy="${escapeHtml(item.deskripsi)}" title="Salin" aria-label="Salin nama">⧉</button>
-        </td>
-        <td class="num">${item.serpong || 0}</td>
-        <td class="num">${item.harco || 0}</td>
-      </tr>`;
+    const rowFor = (item) => `<tr>
+      <td class="t-name">${escapeHtml(item.deskripsi)}
+        <button class="btn-inline" data-copy="${escapeHtml(item.deskripsi)}" title="Salin" aria-label="Salin nama">⧉</button></td>
+      <td class="t-num">${item.serpong || 0}</td>
+      <td class="t-num">${item.harco || 0}</td>
+    </tr>`;
 
-    const fill = (id, list, empty) => {
-      document.getElementById(id).innerHTML = list.length
-        ? list.map(row).join('')
-        : `<tr><td colspan="3" class="cell-empty">${empty}</td></tr>`;
-    };
-    fill('pull-serpong-body', pull, 'Tidak ada rekomendasi');
-    fill('return-harco-body', ret, 'Tidak ada rekomendasi');
-
-    document.querySelectorAll('#page-dashboard [data-copy]').forEach((b) =>
-      b.addEventListener('click', () => copyToClipboard(b.dataset.copy, 'Tersalin: ' + b.dataset.copy))
-    );
+    this.register('dash-pull-serpong', ['Barang', { label: 'Srp', cls: 't-num' }, { label: 'Hrc', cls: 't-num' }], pull.map(rowFor), 8);
+    this.register('dash-return-harco', ['Barang', { label: 'Srp', cls: 't-num' }, { label: 'Hrc', cls: 't-num' }], ret.map(rowFor), 8);
   },
 
-  renderNewItems(model) {
-    const items = model.filter((p) => p.isNew);
-    const box = document.getElementById('dash-new-items');
-    if (!items.length) {
-      box.innerHTML = '<div class="empty-state-sm">Tidak ada barang baru hari ini</div>';
-      return;
-    }
-    box.innerHTML =
-      `<div class="alert-count"><span>${items.length} barang baru</span></div>` +
-      items
-        .map(
-          (p) => `
-        <div class="alert-item">
-          <div class="alert-product"><span class="tag tag-new">BARU</span> ${escapeHtml(p.deskripsi)}</div>
-          <div class="alert-prices">
-            <span class="pl-k">Stok</span> <span class="alert-new">${p.total || 0}</span>
-            <span class="pl-k">Online</span> <span class="alert-new">${formatCurrency(p.hargaOnline || 0)}</span>
-          </div>
-        </div>`
-        )
-        .join('');
+  buildNew(model) {
+    const rows = model
+      .filter((p) => p.isNew)
+      .map(
+        (p) => `<tr>
+          <td class="t-name"><span class="tag tag-new">BARU</span> ${escapeHtml(p.deskripsi)}</td>
+          <td class="t-num">${p.total || 0}</td>
+          <td class="t-num">${formatCurrency(p.hargaOnline || 0)}</td>
+        </tr>`
+      );
+    this.register('dash-new-items', ['Barang', { label: 'Stok', cls: 't-num' }, { label: 'Harga Online', cls: 't-num' }], rows, 10, 'dc-new');
   },
 };

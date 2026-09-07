@@ -50,22 +50,44 @@ function changeScore(p) {
   return dPrice + dStock + (p.isNew ? 1e6 : 0);
 }
 
+// Prosesor facet order: alphabetical by family prefix first, then the tier
+// number ascending — "AMD R3, AMD R5, AMD R7, Intel Core 3, Intel Core 5, …".
+function cpuFacetSort(a, b) {
+  const pre = (s) => s.replace(/\s*\d+$/, '').trim().toLowerCase();
+  const numOf = (s) => parseInt((s.match(/(\d+)\s*$/) || [])[1] || '0', 10);
+  const pa = pre(a);
+  const pb = pre(b);
+  if (pa !== pb) return pa.localeCompare(pb);
+  return numOf(a) - numOf(b);
+}
+
+// Resolusi facet order: real resolution, low -> high.
+const RES_ORDER = [
+  'HD', 'FHD', 'FHD+', 'WSXGA', 'WUXGA', 'WQXGA', 'WQXGA+', '2K', '2.2K', '2.5K',
+  '2.8K', '3K', '3.2K', 'QHD', 'QHD+', 'WQUXGA', 'UHD', '4K',
+];
+function resFacetSort(a, b) {
+  const ia = RES_ORDER.indexOf(a);
+  const ib = RES_ORDER.indexOf(b);
+  return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || a.localeCompare(b);
+}
+
 // Faceted filters on the left, built from the parsed spec of each row.
 const FACETS = [
   { key: 'kategori', label: 'Kategori', get: (s) => s.category },
-  { key: 'brand', label: 'Brand', get: (s) => s.brand },
-  { key: 'cpu', label: 'Prosesor', get: (s) => s.cpuFamily },
+  { key: 'brand', label: 'Brand', get: (s) => s.brand, sort: (a, b) => a.localeCompare(b) },
+  { key: 'cpu', label: 'Prosesor', get: (s) => s.cpuFamily, sort: cpuFacetSort },
   { key: 'ram', label: 'RAM', get: (s) => (s.ramGB ? `${s.ramGB} GB` : null), num: (v) => parseInt(v, 10) },
   {
     key: 'storage', label: 'Storage',
     get: (s) => (s.storageGB ? (s.storageGB >= 1024 ? `${s.storageGB / 1024} TB` : `${s.storageGB} GB`) : null),
     num: (v) => (v.includes('TB') ? parseFloat(v) * 1024 : parseInt(v, 10)),
   },
-  { key: 'gpu', label: 'GPU', get: (s) => (s.gpu ? s.gpu.replace(/\s\d+GB$/, '') : s.gpuType === 'Integrated' ? 'Integrated' : null) },
+  { key: 'gpu', label: 'GPU', get: (s) => (s.gpu ? s.gpu.replace(/\s\d+GB$/, '') : s.gpuType === 'Integrated' ? 'Integrated' : null), sort: (a, b) => a.localeCompare(b) },
   { key: 'layar', label: 'Ukuran Layar', get: (s) => s.screen, num: (v) => parseFloat(v) },
-  { key: 'resolusi', label: 'Resolusi', get: (s) => s.resolution },
-  { key: 'panel', label: 'Panel', get: (s) => s.panel },
-  { key: 'os', label: 'OS', get: (s) => s.os },
+  { key: 'resolusi', label: 'Resolusi', get: (s) => s.resolution, sort: resFacetSort },
+  { key: 'panel', label: 'Panel', get: (s) => s.panel, sort: (a, b) => a.localeCompare(b) },
+  { key: 'os', label: 'OS', get: (s) => s.os, sort: (a, b) => a.localeCompare(b) },
 ];
 
 // Compact currency delta: 1_250_000 -> "1,3jt", 180_000 -> "180rb".
@@ -138,6 +160,15 @@ export const PriceList = {
   async render({ force = false } = {}) {
     if (this.costVisible === null) this.costVisible = !Auth.isSales();
     this.wire();
+
+    // A KPI card on the dashboard can request a pre-set quick filter.
+    if (this.pendingChip) {
+      this.chip = this.pendingChip;
+      this.pendingChip = null;
+      document.querySelectorAll('#page-pricelist .chip').forEach((c) =>
+        c.setAttribute('aria-pressed', String(c.dataset.filter === this.chip))
+      );
+    }
 
     const dateSelect = document.getElementById('pricelist-date-select');
     let targetDate = dateSelect.value;
@@ -337,7 +368,9 @@ export const PriceList = {
       }
       const opts = [...counts.entries()].map(([value, count]) => ({ value, count }));
       opts.sort(
-        f.num
+        f.sort
+          ? (a, b) => f.sort(a.value, b.value)
+          : f.num
           ? (a, b) => f.num(a.value) - f.num(b.value)
           : (a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value))
       );

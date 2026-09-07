@@ -293,38 +293,54 @@ a { color: var(--accent-strong); }
 .kpi-value { font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 800; line-height: 1.15; margin: var(--space-2) 0 2px; letter-spacing: -0.02em; }
 .kpi-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); }
 
-/* ---- 8. Dashboard grid / alerts ----------------------------- */
-.dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-5); align-items: start; }
-.dashboard-grid-full { grid-column: 1 / -1; }
-.stock-detail { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
-
-.alert-count {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 0.78rem; color: var(--text-secondary);
-  padding-bottom: var(--space-3); margin-bottom: var(--space-3);
-  border-bottom: 1px dashed var(--border-color);
-}
-.alert-item {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
-  gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border-color);
-}
-.alert-item:last-child { border-bottom: none; padding-bottom: 0; }
-.alert-item:first-of-type { padding-top: 0; }
-.alert-product { flex: 1; min-width: 150px; font-size: 0.88rem; font-weight: 600; }
-.alert-prices { display: flex; align-items: center; gap: var(--space-2); font-size: 0.82rem; background: var(--bg-tint); padding: 4px 10px; border-radius: var(--radius-sm); }
-.alert-old { color: var(--text-muted); text-decoration: line-through; }
-.alert-new { font-weight: 700; }
-.alert-diff { min-width: 76px; text-align: right; font-weight: 800; font-size: 0.8rem; padding: 3px 7px; border-radius: 5px; }
+/* ---- 8. Dashboard ------------------------------------------- */
 .is-up { color: var(--up); }
 .is-down { color: var(--down); }
-.alert-diff.is-up { background: var(--up-bg); }
-.alert-diff.is-down { background: var(--down-bg); }
 .empty-state-sm { text-align: center; color: var(--text-muted); padding: var(--space-5); font-size: 0.88rem; }
 
-#page-dashboard .alert-item { flex-direction: column; align-items: stretch; gap: var(--space-2); }
-#page-dashboard .alert-item .alert-product { min-width: 0; }
-#page-dashboard .alert-prices { align-self: flex-start; }
-#page-dashboard .alert-diff { align-self: flex-start; text-align: left; }
+.dash-blocks { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.dash-block { overflow: hidden; }
+.dash-block-head {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tint);
+}
+.dash-block-head h2 { font-size: 0.92rem; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+.dash-count {
+  margin-left: auto; font-size: 0.72rem; font-weight: 800;
+  background: var(--bg-secondary); border: 1px solid var(--border-color);
+  color: var(--text-secondary); padding: 1px 8px; border-radius: 999px;
+}
+.dash-sub { padding: var(--space-3) var(--space-4) 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+
+.dash-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.dash-table th {
+  text-align: left; padding: 7px var(--space-4);
+  font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--text-muted); border-bottom: 1px solid var(--border-color); white-space: nowrap;
+}
+.dash-table td { padding: 9px var(--space-4); border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+.dash-table tr:last-child td { border-bottom: none; }
+.dash-table tbody tr:hover { background: var(--hover-bg); }
+.dash-table .t-name { font-weight: 600; line-height: 1.35; }
+.dash-table .t-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dash-table .t-sub { color: var(--text-muted); font-size: 0.78rem; }
+.dash-table .t-today { font-weight: 800; }
+.dash-table .t-today.is-up { color: var(--up); }
+.dash-table .t-today.is-down { color: var(--down); }
+.dash-table .cell-empty { text-align: center; color: var(--text-muted); padding: var(--space-5) !important; }
+
+.dash-more {
+  width: 100%; padding: 9px; border: none; border-top: 1px solid var(--border-color);
+  background: var(--bg-tint); color: var(--accent-strong); font-weight: 700; font-size: 0.8rem; cursor: pointer;
+}
+.dash-more:hover { background: var(--hover-bg); }
+
+/* KPI cards become clickable jump-offs to the price list. */
+.kpi-card.is-link { cursor: pointer; }
+.kpi-card.is-link:hover { border-color: var(--accent); }
 
 /* ---- 9. Tables ---------------------------------------------- */
 .table-wrapper {
@@ -750,9 +766,6 @@ body.role-sales-kurir .admin-only { display: none !important; }
 }
 
 /* ---- 21. Responsive ------------------------- */
-@media (max-width: 1100px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-}
 @media (max-width: 900px) {
   .courier-grid { grid-template-columns: 1fr; }
 
