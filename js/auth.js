@@ -90,6 +90,7 @@ export const Auth = {
 
   _initGoogleSignIn() {
     const container = document.getElementById('google-signin-btn');
+    container.innerHTML = ''; // clear any button from a previous login cycle
     try {
       google.accounts.id.initialize({
         client_id: CONFIG.GOOGLE_CLIENT_ID,

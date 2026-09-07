@@ -42,7 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.id === 'modal-overlay') hideModal();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hideModal();
+    if (e.key !== 'Escape') return;
+    hideModal();
+    document.getElementById('edit-courier-modal')?.classList.remove('show');
   });
 
   // Collapsible cards on mobile.
