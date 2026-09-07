@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Vicmic Indonesia — Dashboard Manajemen Price List & Stok">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#16a34a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Vicmic">
     <title>Vicmic Indonesia Dashboard</title>
     <link rel="manifest" href="manifest.json">
@@ -17,9 +17,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=100">
+    <link rel="stylesheet" href="style.css?v=110">
 </head>
 
 <body>
@@ -38,49 +38,57 @@
 
     <!-- ===== APP SHELL ===== -->
     <div id="app-shell" hidden>
-        <header id="mobile-header">
-            <button id="mobile-menu-toggle" class="btn-icon" aria-label="Buka menu">
-                <span></span><span></span><span></span>
-            </button>
-            <span class="mobile-title">Vicmic Dashboard</span>
-            <button class="btn-icon theme-toggle" aria-label="Ganti tema" aria-pressed="false">
-                <span class="theme-toggle-icon" aria-hidden="true"></span>
-            </button>
-        </header>
+        <header id="topnav">
+            <div class="topnav-inner">
+                <a class="topnav-brand" href="#"><img src="logo.png" alt="Vicmic Indonesia"></a>
 
-        <nav id="sidebar" aria-label="Navigasi utama">
-            <div class="sidebar-header">
-                <img class="sidebar-logo" src="logo.png" alt="Vicmic Indonesia" width="128">
-            </div>
+                <button id="nav-toggle" class="btn-icon nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
+                    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
 
-            <div id="user-info" class="user-info">
-                <img id="user-avatar" class="user-avatar" alt="" hidden>
-                <div class="user-details">
-                    <span id="user-name" class="user-name"></span>
-                    <span id="user-role-badge" class="user-role-badge"></span>
+                <nav id="nav-menu" class="nav-menu" aria-label="Navigasi utama">
+                    <button class="nav-item admin-only" data-page="dashboard">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                        <span>Dashboard</span>
+                    </button>
+                    <button class="nav-item" data-page="pricelist">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span>Price List</span>
+                    </button>
+                    <button class="nav-item" data-page="reports">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        <span>Laporan</span>
+                    </button>
+                    <button class="nav-item admin-only" data-page="users">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <span>User</span>
+                    </button>
+                    <button class="nav-item courier-only" data-page="courier" hidden>
+                        <svg class="nav-icon" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                        <span>Log Kurir</span>
+                    </button>
+                    <button class="nav-item admin-only" data-page="upload">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span>Upload</span>
+                    </button>
+                    <button class="nav-item admin-only" data-page="settings">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                        <span>Rumus</span>
+                    </button>
+                </nav>
+
+                <div class="topnav-user">
+                    <img id="user-avatar" class="user-avatar" alt="" hidden>
+                    <div class="user-details">
+                        <span id="user-name" class="user-name"></span>
+                        <span id="user-role-badge" class="user-role-badge"></span>
+                    </div>
+                    <button id="btn-logout" class="btn-icon" aria-label="Logout" title="Logout">
+                        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
                 </div>
             </div>
-
-            <ul class="nav-menu">
-                <li class="nav-item admin-only" data-page="dashboard"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></li>
-                <li class="nav-item" data-page="pricelist"><span class="nav-icon">📋</span><span class="nav-text">Master Price List</span></li>
-                <li class="nav-item" data-page="reports"><span class="nav-icon">📈</span><span class="nav-text">Laporan</span></li>
-                <li class="nav-item admin-only" data-page="users"><span class="nav-icon">👥</span><span class="nav-text">User Management</span></li>
-                <li class="nav-item courier-only" data-page="courier" hidden><span class="nav-icon">🚚</span><span class="nav-text">Log Kurir</span></li>
-                <li class="nav-item admin-only" data-page="upload"><span class="nav-icon">📁</span><span class="nav-text">Upload Data</span></li>
-                <li class="nav-item admin-only" data-page="settings"><span class="nav-icon">⚙️</span><span class="nav-text">Pengaturan Rumus</span></li>
-            </ul>
-
-            <div class="sidebar-footer">
-                <button class="btn btn-ghost theme-toggle" aria-pressed="false">
-                    <span class="theme-toggle-icon" aria-hidden="true"></span>
-                    <span class="theme-toggle-label">Mode Terang</span>
-                </button>
-                <button id="btn-logout" class="btn btn-ghost btn-logout">🚪 Logout</button>
-            </div>
-        </nav>
-
-        <div id="sidebar-overlay"></div>
+        </header>
 
         <main id="content-area">
 
@@ -483,7 +491,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script type="module" src="js/main.js?v=100"></script>
+    <script type="module" src="js/main.js?v=110"></script>
 </body>
 
 </html>

@@ -5,32 +5,29 @@
 import { Auth } from './auth.js';
 import { Courier } from './pages/courier.js';
 import { hideModal } from './ui.js';
-import { initThemeEarly, wireThemeToggles } from './theme.js';
-
-initThemeEarly();
 
 // Quiet global error surface — no blocking alert() dialogs in production.
 window.addEventListener('error', (e) => console.error('[app error]', e.message, e.filename + ':' + e.lineno));
 window.addEventListener('unhandledrejection', (e) => console.error('[unhandled rejection]', e.reason));
 
 document.addEventListener('DOMContentLoaded', () => {
-  wireThemeToggles();
-
   // Service worker.
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch((err) => console.warn('SW register:', err));
   }
 
-  // Sidebar (mobile).
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebar-overlay');
-  document.getElementById('mobile-menu-toggle').addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('show');
+  // Top nav (mobile drawer).
+  const navMenu = document.getElementById('nav-menu');
+  const navToggle = document.getElementById('nav-toggle');
+  navToggle?.addEventListener('click', () => {
+    const open = navMenu.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', String(open));
   });
-  overlay.addEventListener('click', () => {
-    sidebar.classList.remove('open');
-    overlay.classList.remove('show');
+  document.addEventListener('click', (e) => {
+    if (navMenu?.classList.contains('open') && !navMenu.contains(e.target) && !navToggle.contains(e.target)) {
+      navMenu.classList.remove('open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
   });
 
   // Logout.

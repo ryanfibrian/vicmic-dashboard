@@ -24,15 +24,10 @@ export const Router = {
   init() {
     if (!this._initialized) {
       window.addEventListener('hashchange', () => this.handleRoute());
-      // Re-render the current page after a theme switch so charts and any
-      // theme-derived colours pick up the new palette.
-      window.addEventListener('themechange', () => {
-        if (this.currentPage) this.renderPage(this.currentPage);
-      });
       document.querySelectorAll('.nav-item').forEach((item) => {
         item.addEventListener('click', () => {
           window.location.hash = item.dataset.page;
-          closeSidebar();
+          closeNav();
         });
       });
       this._initialized = true;
@@ -84,7 +79,8 @@ export const Router = {
   },
 };
 
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebar-overlay').classList.remove('show');
+function closeNav() {
+  const menu = document.getElementById('nav-menu');
+  menu?.classList.remove('open');
+  document.getElementById('nav-toggle')?.setAttribute('aria-expanded', 'false');
 }

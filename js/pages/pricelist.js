@@ -21,6 +21,7 @@ import {
   todayKey,
 } from '../utils.js';
 import { showToast, confirmModal, showModal, hideModal, copyToClipboard, BTN_SPINNER } from '../ui.js';
+import { parseNotebookTitle, specSearchText } from '../specs.js';
 
 // Metric definitions, in display order. `cost: true` = hidden from sales until
 // they toggle it on.
@@ -83,7 +84,7 @@ function tokenize(query) {
 
 function smartMatch(tokens, item) {
   if (!tokens.length) return true;
-  const loose = normalize(`${item.deskripsi} ${item.sku} ${item.pn} ${item.type}`);
+  const loose = normalize(`${item.deskripsi} ${item.sku} ${item.pn} ${item.type} ${item.specText || ''}`);
   const tight = loose.replace(/ /g, '');
   return tokens.every((t) => loose.includes(t) || tight.includes(t));
 }
@@ -152,8 +153,11 @@ export const PriceList = {
 
     this.all = rows.map((p) => {
       const prev = prevMap.get(p.deskripsi.toLowerCase());
+      const spec = parseNotebookTitle(p.deskripsi);
       return {
         ...p,
+        spec,
+        specText: specSearchText(spec),
         hargaOnline: PriceCalc.hargaOnline(p.distribusi),
         hargaOffline: PriceCalc.hargaOffline(p.distribusi),
         isNew: !prev,
@@ -291,11 +295,13 @@ export const PriceList = {
     const stats = metrics
       .map((m) => {
         const cur = p[m.key] || 0;
+        const prev = m.prev ? p[m.prev] : null;
+        const dir = prev != null && cur !== prev ? (cur > prev ? ' is-up' : ' is-down') : '';
         const val = m.kind === 'money' ? formatCurrency(cur) : formatNumber(cur);
         const chip = m.prev ? deltaChip(cur, p[m.prev], m.kind) : '';
         return `<span class="pl-stat${m.serpong ? ' is-serpong' : ''}">
           <span class="pl-k">${m.label}</span>
-          <span class="pl-v">${val}</span>${chip}
+          <span class="pl-v${dir}">${val}</span>${chip}
         </span>`;
       })
       .join('');
@@ -323,15 +329,19 @@ export const PriceList = {
         const cur = p[m.key] || 0;
         const prev = m.prev ? p[m.prev] : null;
         const fmt = (v) => (v == null ? '—' : m.kind === 'money' ? formatCurrency(v) : formatNumber(v));
+        let cls = 'today';
         let diff = '';
         if (prev != null && cur !== prev) {
           const up = cur > prev;
-          const d = Math.abs(cur - prev);
-          diff = `<span class="delta-chip ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${m.kind === 'money' ? formatCurrency(d) : formatNumber(d)}</span>`;
+          cls += up ? ' is-up' : ' is-down';
+          const d = up ? '+' : '−';
+          diff = ` <small>(${d}${m.kind === 'money' ? formatCurrency(Math.abs(cur - prev)) : formatNumber(Math.abs(cur - prev))})</small>`;
         }
-        return `<tr><td>${m.label}</td><td class="num">${fmt(prev)}</td><td class="num">${fmt(cur)} ${diff}</td></tr>`;
+        return `<tr><td>${m.label}</td><td class="num">${fmt(prev)}</td><td class="num ${cls}">${fmt(cur)}${diff}</td></tr>`;
       })
       .join('');
+
+    const specStrip = this.renderSpecs(p.spec);
 
     const meta = [p.sku && `SKU ${escapeHtml(p.sku)}`, p.pn && `PN ${escapeHtml(p.pn)}`, p.type && `Type ${escapeHtml(p.type)}`]
       .filter(Boolean)
@@ -341,10 +351,11 @@ export const PriceList = {
 
     return `
       <div class="pl-detail">
+        ${specStrip}
         <table class="pl-detail-table">
           <thead><tr><th>Metrik</th><th class="num">Kemarin</th><th class="num">Hari ini</th></tr></thead>
           <tbody>${rows}
-            <tr><td>Promo</td><td>${escapeHtml(p.prevPromo || '—')}</td><td>${escapeHtml(p.promo_sellout || '—')}</td></tr>
+            <tr><td>Promo</td><td>${escapeHtml(p.prevPromo || '—')}</td><td class="today">${escapeHtml(p.promo_sellout || '—')}</td></tr>
           </tbody>
         </table>
         ${meta ? `<p class="pl-detail-meta">${meta}</p>` : ''}
@@ -353,6 +364,28 @@ export const PriceList = {
           <button class="btn btn-sm btn-ghost" data-gsearch="${escapeHtml(p.deskripsi)}">⌕ Cari di Google</button>
         </div>
       </div>`;
+  },
+
+  renderSpecs(spec) {
+    if (!spec) return '';
+    const items = [
+      ['Brand', spec.brand],
+      ['Model', spec.model],
+      ['Prosesor', spec.processor],
+      ['RAM', spec.ramGB ? `${spec.ramGB} GB` : null],
+      ['Storage', spec.storageGB ? (spec.storageGB >= 1024 ? `${spec.storageGB / 1024} TB` : `${spec.storageGB} GB`) : null],
+      ['GPU', spec.gpu || (spec.gpuType === 'Integrated' ? 'Integrated' : null)],
+      ['Layar', spec.screen ? `${spec.screen}${spec.resolution ? ` ${spec.resolution}` : ''}${spec.panel ? ` ${spec.panel}` : ''}${spec.touch ? ' Touch' : ''}` : null],
+      ['OS', spec.os],
+      ['Bundle', spec.bundle],
+      ['Garansi', spec.warranty],
+      ['Warna', spec.color],
+      ['Catatan', spec.notes],
+    ].filter(([, v]) => v);
+    if (!items.length) return '';
+    return `<div class="pl-specs">${items
+      .map(([k, v]) => `<span class="spec-chip">${k}: <b>${escapeHtml(v)}</b></span>`)
+      .join('')}</div>`;
   },
 
   // ---- admin: quick upload straight from this page --------------------
