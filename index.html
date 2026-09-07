@@ -1,242 +1,209 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="Vicmic Indonesia - Dashboard Manajemen Price List & Stok">
-    <meta name="theme-color" content="#667eea">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Vicmic Indonesia — Dashboard Manajemen Price List & Stok">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Vicmic">
     <title>Vicmic Indonesia Dashboard</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=81">
-    <script>
-        window.addEventListener('error', function(e) {
-            alert('JS Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
-        });
-        window.addEventListener('unhandledrejection', function(e) {
-            alert('Unhandled Rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
-        });
-    </script>
+    <link rel="stylesheet" href="style.css?v=100">
 </head>
 
 <body>
-    <!-- ===== LOGIN PAGE ===== -->
+    <!-- ===== LOGIN ===== -->
     <div id="login-page">
-        <div class="login-bg"></div>
+        <div class="login-bg" aria-hidden="true"></div>
         <div class="login-container">
-            <div class="login-card glass-card">
-                <img class="login-logo-img" src="logo.png" alt="Vicmic Logo" style="width: 220px; height: auto; margin: 0 auto 1.5rem; display: block;">
-                <h1 class="login-title" style="display: none;">Vicmic Indonesia</h1>
+            <div class="login-card">
+                <img class="login-logo" src="logo.png" alt="Vicmic Indonesia" width="200">
                 <p class="login-subtitle">Dashboard Management System</p>
                 <div id="google-signin-btn"></div>
-                <div id="login-error" class="login-error"></div>
+                <p id="login-error" class="login-error" role="alert"></p>
             </div>
         </div>
     </div>
 
     <!-- ===== APP SHELL ===== -->
-    <div id="app-shell" style="display:none">
-        <!-- Mobile Header -->
+    <div id="app-shell" hidden>
         <header id="mobile-header">
-            <button id="mobile-menu-toggle" class="btn-icon" aria-label="Toggle Menu">
+            <button id="mobile-menu-toggle" class="btn-icon" aria-label="Buka menu">
                 <span></span><span></span><span></span>
             </button>
             <span class="mobile-title">Vicmic Dashboard</span>
+            <button class="btn-icon theme-toggle" aria-label="Ganti tema" aria-pressed="false">
+                <span class="theme-toggle-icon" aria-hidden="true"></span>
+            </button>
         </header>
 
-        <!-- Sidebar -->
-        <nav id="sidebar">
-            <div class="sidebar-header" style="justify-content: center;">
-                <img class="sidebar-logo-img" src="logo.png" alt="Vicmic Logo" style="width: 140px; height: auto; margin-top: 0.5rem;">
+        <nav id="sidebar" aria-label="Navigasi utama">
+            <div class="sidebar-header">
+                <img class="sidebar-logo" src="logo.png" alt="Vicmic Indonesia" width="128">
             </div>
+
             <div id="user-info" class="user-info">
-                <img id="user-avatar" class="user-avatar" alt="" src="">
+                <img id="user-avatar" class="user-avatar" alt="" hidden>
                 <div class="user-details">
                     <span id="user-name" class="user-name"></span>
                     <span id="user-role-badge" class="user-role-badge"></span>
                 </div>
             </div>
+
             <ul class="nav-menu">
-                <li class="nav-item admin-only" data-page="dashboard">
-                    <span class="nav-icon">📊</span><span class="nav-text">Dashboard</span>
-                </li>
-                <li class="nav-item" data-page="pricelist">
-                    <span class="nav-icon">📋</span><span class="nav-text">Master Price List</span>
-                </li>
-                <li class="nav-item" data-page="reports">
-                    <span class="nav-icon">📈</span><span class="nav-text">Laporan</span>
-                </li>
-                <li class="nav-item admin-only" data-page="users">
-                    <span class="nav-icon">👥</span> <span class="nav-text">User Management</span>
-                </li>
-                <li class="nav-item courier-only" data-page="courier" style="display: none;">
-                    <span class="nav-icon">🚚</span> Log Kurir
-                </li>
-                <li class="nav-item admin-only" data-page="upload">
-                    <span class="nav-icon">📁</span><span class="nav-text">Upload Data</span>
-                </li>
-                <li class="nav-item admin-only" data-page="settings">
-                    <span class="nav-icon">⚙️</span><span class="nav-text">Pengaturan Rumus</span>
-                </li>
+                <li class="nav-item admin-only" data-page="dashboard"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></li>
+                <li class="nav-item" data-page="pricelist"><span class="nav-icon">📋</span><span class="nav-text">Master Price List</span></li>
+                <li class="nav-item" data-page="reports"><span class="nav-icon">📈</span><span class="nav-text">Laporan</span></li>
+                <li class="nav-item admin-only" data-page="users"><span class="nav-icon">👥</span><span class="nav-text">User Management</span></li>
+                <li class="nav-item courier-only" data-page="courier" hidden><span class="nav-icon">🚚</span><span class="nav-text">Log Kurir</span></li>
+                <li class="nav-item admin-only" data-page="upload"><span class="nav-icon">📁</span><span class="nav-text">Upload Data</span></li>
+                <li class="nav-item admin-only" data-page="settings"><span class="nav-icon">⚙️</span><span class="nav-text">Pengaturan Rumus</span></li>
             </ul>
+
             <div class="sidebar-footer">
-                <button id="btn-logout" class="btn btn-logout">🚪 Logout</button>
+                <button class="btn btn-ghost theme-toggle" aria-pressed="false">
+                    <span class="theme-toggle-icon" aria-hidden="true"></span>
+                    <span class="theme-toggle-label">Mode Terang</span>
+                </button>
+                <button id="btn-logout" class="btn btn-ghost btn-logout">🚪 Logout</button>
             </div>
         </nav>
 
-        <!-- Sidebar Overlay (Mobile) -->
         <div id="sidebar-overlay"></div>
 
-        <!-- Content Area -->
         <main id="content-area">
 
-            <!-- ========== UPLOAD PAGE ========== -->
+            <!-- ========== UPLOAD ========== -->
             <section id="page-upload" class="page admin-only">
                 <div class="page-header">
                     <h1>⬆️ Upload Data Price List</h1>
                 </div>
 
-                <div id="upload-section" class="glass-card mb-1">
+                <div class="card mb-2">
                     <div class="card-body upload-body">
                         <div id="upload-dropzone" class="upload-dropzone">
-                            <span class="dropzone-icon">📁</span>
-                            <p class="dropzone-text">Drag & drop file Excel, atau <strong>klik di sini</strong></p>
+                            <span class="dropzone-icon" aria-hidden="true">📁</span>
+                            <p class="dropzone-text">Tarik &amp; letakkan file Excel, atau <strong>klik di sini</strong></p>
                             <p class="dropzone-hint">.xlsx / .xls</p>
                             <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
                         </div>
                         <div class="upload-options">
-                            <label class="upload-date-label">Tanggal Berlaku:
+                            <div class="form-group">
+                                <label class="form-label" for="upload-date">Tanggal berlaku</label>
                                 <input type="date" id="upload-date" class="input-field">
-                            </label>
-                            <button id="btn-upload" class="btn btn-primary" disabled>⬆️ Upload &amp; Proses</button>
+                            </div>
+                            <button id="btn-upload" class="btn btn-primary" disabled>Upload &amp; Proses</button>
                         </div>
-                        <div id="upload-status"></div>
+                        <div id="upload-status" class="upload-status"></div>
                     </div>
                 </div>
 
-                <div class="glass-card mt-2">
-                    <div class="card-header">
-                        <h2>📋 Riwayat Upload Data</h2>
-                    </div>
+                <div class="card">
+                    <div class="card-header"><h2>📋 Riwayat Upload Data</h2></div>
                     <div class="card-body">
-                        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem;">
-                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <label for="filter-start-date" style="font-size: 0.9em; font-weight: 500;">Dari:</label>
-                                    <input type="date" id="filter-start-date" class="input-field" style="padding: 4px 8px; font-size: 0.9em;">
-                                </div>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <label for="filter-end-date" style="font-size: 0.9em; font-weight: 500;">Sampai:</label>
-                                    <input type="date" id="filter-end-date" class="input-field" style="padding: 4px 8px; font-size: 0.9em;">
-                                </div>
-                                <button id="btn-filter-history" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.9em;">🔍 Filter</button>
-                                <button id="btn-reset-history" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.9em;">Reset</button>
+                        <div class="filter-bar">
+                            <div class="form-group">
+                                <label class="form-label" for="filter-start-date">Dari</label>
+                                <input type="date" id="filter-start-date" class="input-field">
                             </div>
-                            <div style="display: flex; justify-content: flex-end; align-items: center; min-height: 32px;">
-                                <button id="btn-bulk-delete" class="btn" style="background: var(--danger-color); color: white; display: none; padding: 4px 12px; font-size: 0.9em;">🗑️ Hapus Terpilih</button>
+                            <div class="form-group">
+                                <label class="form-label" for="filter-end-date">Sampai</label>
+                                <input type="date" id="filter-end-date" class="input-field">
                             </div>
+                            <button id="btn-filter-history" class="btn btn-primary btn-sm">Filter</button>
+                            <button id="btn-reset-history" class="btn btn-secondary btn-sm">Reset</button>
+                            <button id="btn-bulk-delete" class="btn btn-danger btn-sm" hidden>🗑️ Hapus Terpilih</button>
                         </div>
                         <div class="table-wrapper">
                             <table id="upload-history-table" class="data-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40px; text-align: center;"><input type="checkbox" id="chk-select-all"></th>
+                                        <th class="col-check"><input type="checkbox" id="chk-select-all" aria-label="Pilih semua"></th>
                                         <th>Tanggal Data</th>
                                         <th>Nama File</th>
                                         <th>Status</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody id="upload-history-body">
-                                    <!-- Populated via JS -->
-                                </tbody>
+                                <tbody id="upload-history-body"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ========== DASHBOARD PAGE ========== -->
+            <!-- ========== DASHBOARD ========== -->
             <section id="page-dashboard" class="page admin-only">
                 <div class="page-header">
                     <h1>📊 Dashboard Analisis</h1>
                     <span id="dashboard-date-label" class="date-label"></span>
                 </div>
 
-                <!-- KPI Grid -->
                 <div id="kpi-grid" class="kpi-grid"></div>
 
-                <div class="glass-card" style="margin-bottom: 2rem;">
-                    <div class="card-header mobile-collapsible collapsed" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                        <h2 style="margin:0; display:flex; align-items:center; width:100%; justify-content:space-between;"><span>📈 Tren Total Stok per Brand</span> <span class="mobile-collapse-toggle">▼</span></h2>
-                        <select id="chart-timeframe" class="input-field" style="width: auto; padding: 4px 8px; font-size: 0.9em;">
-                            <option value="7">7 Hari Terakhir</option>
-                            <option value="14">14 Hari Terakhir</option>
-                            <option value="30">30 Hari Terakhir</option>
+                <div class="card mb-2">
+                    <div class="card-header mobile-collapsible collapsed">
+                        <h2><span>📈 Tren Total Stok per Brand</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
+                        <select id="chart-timeframe" class="input-field input-inline">
+                            <option value="7">7 hari terakhir</option>
+                            <option value="14">14 hari terakhir</option>
+                            <option value="30">30 hari terakhir</option>
                         </select>
                     </div>
-                    <div class="card-body" style="position: relative; height: 300px; width: 100%;">
-                        <canvas id="brandChart"></canvas>
+                    <div class="card-body">
+                        <div class="chart-box"><canvas id="brandChart"></canvas></div>
                     </div>
                 </div>
 
-                <!-- Dashboard Widgets Row -->
                 <div class="dashboard-grid">
-                    <div class="glass-card">
+                    <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2 style="margin:0; display:flex; align-items:center; width:100%; justify-content:space-between;"><span>🚨 Price Alert Harian</span> <span class="mobile-collapse-toggle">▼</span></h2>
+                            <h2><span>🚨 Price Alert Harian</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
                         <div class="card-body scrollable" id="price-alert-list">
-                            <div class="empty-state">Belum ada data perbandingan</div>
+                            <div class="empty-state-sm">Belum ada data perbandingan</div>
                         </div>
                     </div>
-                    <div class="glass-card">
+                    <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2 style="margin:0; display:flex; align-items:center; width:100%; justify-content:space-between;"><span>📦 Analisis Stok Harian</span> <span class="mobile-collapse-toggle">▼</span></h2>
+                            <h2><span>📦 Analisis Stok Harian</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
                         <div class="card-body scrollable" id="stock-alert-list">
-                            <div class="empty-state">Belum ada data perbandingan</div>
+                            <div class="empty-state-sm">Belum ada data perbandingan</div>
                         </div>
                     </div>
-                    <div class="glass-card">
+                    <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2 style="margin:0; display:flex; align-items:center; width:100%; justify-content:space-between;"><span>🚚 Rekomendasi Tarik ke Serpong</span> <span class="mobile-collapse-toggle">▼</span></h2>
+                            <h2><span>🚚 Rekomendasi Tarik ke Serpong</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
                         <div class="card-body">
-                            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-                                <table class="data-table" id="pull-serpong-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="col-deskripsi">Nama Barang</th>
-                                            <th style="width: 80px; text-align: right;">Srp</th>
-                                            <th style="width: 80px; text-align: right;">Hrc</th>
-                                        </tr>
-                                    </thead>
+                            <div class="table-wrapper table-scroll-y">
+                                <table class="data-table">
+                                    <thead><tr><th class="col-deskripsi">Nama Barang</th><th class="num">Srp</th><th class="num">Hrc</th></tr></thead>
                                     <tbody id="pull-serpong-body"></tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
-                    <div class="glass-card">
+                    <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2 style="margin:0; display:flex; align-items:center; width:100%; justify-content:space-between;"><span>🔄 Rekomendasi Retur ke Harco</span> <span class="mobile-collapse-toggle">▼</span></h2>
+                            <h2><span>🔄 Rekomendasi Retur ke Harco</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
                         <div class="card-body">
-                            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-                                <table class="data-table" id="return-harco-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="col-deskripsi">Nama Barang</th>
-                                            <th style="width: 80px; text-align: right;">Srp</th>
-                                            <th style="width: 80px; text-align: right;">Hrc</th>
-                                        </tr>
-                                    </thead>
+                            <div class="table-wrapper table-scroll-y">
+                                <table class="data-table">
+                                    <thead><tr><th class="col-deskripsi">Nama Barang</th><th class="num">Srp</th><th class="num">Hrc</th></tr></thead>
                                     <tbody id="return-harco-body"></tbody>
                                 </table>
                             </div>
@@ -245,105 +212,84 @@
                 </div>
             </section>
 
-            <!-- ========== PRICE LIST PAGE ========== -->
+            <!-- ========== PRICE LIST ========== -->
             <section id="page-pricelist" class="page">
                 <div class="page-header">
                     <h1>📋 Master Price List</h1>
-                    <div class="page-header-actions" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                            <label class="admin-only" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0; white-space: nowrap;">Tanggal:
-                                <input type="date" id="pricelist-date-select" class="input-field" style="margin-bottom: 0; padding: 0.4rem 0.5rem;">
-                            </label>
-                            <button id="btn-export" class="btn btn-primary btn-sm" style="padding: 0.4rem 0.75rem;">📊 Export to Excel</button>
-                            <button id="btn-toggle-distribusi" class="btn btn-secondary btn-sm" style="display: none; padding: 0.4rem 0.75rem;">👁️ Hide Distribusi</button>
-                        </div>
-                        <span id="pricelist-date-display" class="date-label" style="display: block; width: 100%;"></span>
+                    <div class="page-header-actions">
+                        <label class="admin-only inline-field">Tanggal
+                            <input type="date" id="pricelist-date-select" class="input-field">
+                        </label>
+                        <button id="btn-export" class="btn btn-primary btn-sm">📊 Export Excel</button>
+                        <button id="btn-toggle-distribusi" class="btn btn-secondary btn-sm" hidden>Tampilkan Distribusi</button>
                     </div>
                 </div>
-                <div class="table-wrapper">
+
+                <div class="pricelist-meta">
+                    <span id="pricelist-date-display" class="date-label"></span>
+                    <span class="pricelist-meta-right">
+                        <span id="pricelist-count" class="muted-count"></span>
+                        <button id="btn-clear-filters" class="btn btn-ghost btn-sm" hidden>Hapus filter</button>
+                    </span>
+                </div>
+
+                <div class="table-wrapper table-scroll-y" id="pricelist-scroll">
                     <table id="pricelist-table" class="data-table">
                         <thead>
                             <tr id="pricelist-header-row"></tr>
-                            <tr id="pricelist-filter-row"></tr>
+                            <tr id="pricelist-filter-row" class="filter-row"></tr>
                         </thead>
                         <tbody id="pricelist-body"></tbody>
                     </table>
                 </div>
-                <div id="pricelist-empty" class="empty-state" style="display:none">
-                    <span class="empty-icon">📭</span>
-                    <p>Tidak ada data untuk tanggal ini</p>
-                </div>
             </section>
 
-            <!-- ========== REPORTS PAGE ========== -->
+            <!-- ========== REPORTS ========== -->
             <section id="page-reports" class="page">
                 <div class="page-header">
                     <h1>📈 Laporan Harian</h1>
                     <span id="reports-date-label" class="date-label"></span>
                 </div>
-                <div class="report-tabs">
-                    <button class="report-tab active" data-tab="new">🆕 Barang Baru</button>
-                    <button class="report-tab" data-tab="outofstock">🚫 Barang Habis</button>
+                <div class="report-tabs" role="tablist">
+                    <button class="report-tab active" data-tab="new" role="tab">🆕 Barang Baru</button>
+                    <button class="report-tab" data-tab="outofstock" role="tab">🚫 Barang Habis</button>
                 </div>
                 <div id="report-new-items" class="report-content active">
                     <div class="table-wrapper">
-                        <table class="data-table" id="new-items-table">
-                            <thead>
-                                <tr></tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                        <table class="data-table" id="new-items-table"><thead><tr></tr></thead><tbody></tbody></table>
                     </div>
                 </div>
                 <div id="report-out-of-stock" class="report-content">
                     <div class="table-wrapper">
-                        <table class="data-table" id="oos-table">
-                            <thead>
-                                <tr></tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                        <table class="data-table" id="oos-table"><thead><tr></tr></thead><tbody></tbody></table>
                     </div>
                 </div>
             </section>
 
-            <!-- ========== USER MANAGEMENT PAGE ========== -->
+            <!-- ========== USER MANAGEMENT ========== -->
             <section id="page-users" class="page admin-only">
-                <div class="page-header">
-                    <h1>👥 User Management</h1>
-                </div>
-                <div class="glass-card">
-                    <div class="card-header">
-                        <h2>➕ Tambah User Baru</h2>
-                    </div>
+                <div class="page-header"><h1>👥 User Management</h1></div>
+                <div class="card mb-2">
+                    <div class="card-header"><h2>➕ Tambah User Baru</h2></div>
                     <div class="card-body">
                         <form id="add-user-form" class="form-row">
-                            <input type="email" id="input-user-email" class="input-field" placeholder="Email Google"
-                                required>
+                            <input type="email" id="input-user-email" class="input-field" placeholder="Email Google" required>
                             <select id="select-user-role" class="input-field">
                                 <option value="sales">Sales</option>
                                 <option value="sales_kurir">Sales + Kurir</option>
                                 <option value="admin">Admin</option>
                             </select>
-                            <button type="submit" class="btn btn-primary">➕ Tambah</button>
+                            <button type="submit" class="btn btn-primary">Tambah</button>
                         </form>
                     </div>
                 </div>
-                <div class="glass-card mt-1">
-                    <div class="card-header">
-                        <h2>📋 Daftar User</h2>
-                    </div>
+                <div class="card">
+                    <div class="card-header"><h2>📋 Daftar User</h2></div>
                     <div class="card-body">
                         <div class="table-wrapper">
                             <table id="users-table" class="data-table">
                                 <thead>
-                                    <tr>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Ditambahkan Oleh</th>
-                                        <th>Tanggal</th>
-                                        <th>Aksi</th>
-                                    </tr>
+                                    <tr><th>Email</th><th>Role</th><th>Ditambahkan Oleh</th><th>Tanggal</th><th>Aksi</th></tr>
                                 </thead>
                                 <tbody id="users-table-body"></tbody>
                             </table>
@@ -352,194 +298,185 @@
                 </div>
             </section>
 
-            <!-- ========== SETTINGS PAGE ========== -->
+            <!-- ========== SETTINGS ========== -->
             <section id="page-settings" class="page admin-only">
-                <div class="page-header">
-                    <h1>⚙️ Pengaturan Rumus</h1>
-                </div>
-                <div class="glass-card" style="max-width: 800px;">
-                    <div class="card-header">
-                        <h2>🛠️ Konfigurasi Rumus Harga</h2>
-                    </div>
+                <div class="page-header"><h1>⚙️ Pengaturan Rumus</h1></div>
+                <div class="card card-narrow">
+                    <div class="card-header"><h2>🛠️ Konfigurasi Rumus Harga</h2></div>
                     <div class="card-body">
-                        <p class="text-muted" style="margin-bottom: 1.5rem; font-size: 0.9rem;">
-                            Ubah rumus perhitungan Harga Online dan Harga Offline menggunakan kode JavaScript. 
-                            Variabel <code style="background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">h</code> adalah nilai dari Harga Distribusi.
+                        <p class="text-muted mb-1">
+                            Ubah rumus perhitungan Harga Online dan Harga Offline dengan kode JavaScript.
+                            Variabel <code>h</code> adalah nilai Harga Distribusi. Akhiri dengan <code>return</code>.
                         </p>
 
-                        <div style="background: rgba(74, 144, 226, 0.1); border: 1px solid rgba(74, 144, 226, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 1.5rem;">
-                            <strong style="display: block; margin-bottom: 8px; color: #4a90e2;">💡 Tips Meracik Rumus dengan Mudah:</strong>
-                            <ol style="margin-left: 20px; margin-bottom: 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-light);">
-                                <li style="margin-bottom: 4px;">Ketik/rancang rumus Anda di Excel (misal menggunakan sel <strong>A1</strong> sebagai Harga Distribusi).</li>
-                                <li style="margin-bottom: 4px;">Tanyakan ke ChatGPT atau AI semacamnya: <em>"Tolong ubah rumus Excel ini ke JavaScript. Anggap A1 adalah variabel <strong>h</strong>, dan pastikan diakhiri <strong>return</strong>"</em>.</li>
-                                <li>AI akan langsung memberikan kode JavaScript yang rpi, dan Anda tinggal <em>copy-paste</em> hasilnya ke dalam kolom pengaturan di bawah ini.</li>
+                        <div class="hint-box mb-2">
+                            <strong>💡 Tips meracik rumus</strong>
+                            <ol>
+                                <li>Rancang rumus di Excel (anggap sel <strong>A1</strong> = Harga Distribusi).</li>
+                                <li>Minta AI: <em>"Ubah rumus Excel ini ke JavaScript, anggap A1 = variabel <strong>h</strong>, akhiri dengan <strong>return</strong>"</em>.</li>
+                                <li>Salin hasilnya ke kolom di bawah, cek di pratinjau, lalu simpan.</li>
                             </ol>
                         </div>
-                        
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Rumus Harga Online</label>
-                            <textarea id="input-formula-online" class="input-field" style="width: 100%; min-height: 150px; font-family: monospace; white-space: pre; overflow-wrap: normal; overflow-x: auto;" placeholder="return h * 1.015;"></textarea>
+
+                        <div class="form-group mb-2">
+                            <label class="form-label" for="input-formula-online">Rumus Harga Online</label>
+                            <textarea id="input-formula-online" class="input-field code-area" spellcheck="false" placeholder="return h * 1.015;"></textarea>
                         </div>
-                        
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Rumus Harga Offline</label>
-                            <textarea id="input-formula-offline" class="input-field" style="width: 100%; min-height: 100px; font-family: monospace; white-space: pre; overflow-wrap: normal; overflow-x: auto;" placeholder="return Math.round(h * 1.11);"></textarea>
+                        <div class="form-group mb-2">
+                            <label class="form-label" for="input-formula-offline">Rumus Harga Offline</label>
+                            <textarea id="input-formula-offline" class="input-field code-area code-area-sm" spellcheck="false" placeholder="return Math.round(h * 1.11);"></textarea>
                         </div>
-                        
-                        <div style="display: flex; gap: 10px; margin-top: 1rem;">
-                            <button id="btn-save-formulas" class="btn btn-primary" style="flex: 1;">💾 Ubah Rumus</button>
-                            <button id="btn-cancel-formulas" class="btn" style="flex: 1; display: none; background-color: var(--text-light); color: white;">Batalkan</button>
+                        <div class="form-group mb-2">
+                            <label class="form-label" for="input-courier-rate">Komisi kurir per KM (Rp)</label>
+                            <input type="number" id="input-courier-rate" class="input-field" min="0" step="50">
                         </div>
+
+                        <div class="preview-row mb-2">
+                            <label class="form-label" for="formula-preview-input">Pratinjau — Harga Distribusi</label>
+                            <input type="number" id="formula-preview-input" class="input-field" value="10000000" min="0" step="100000">
+                            <p id="formula-preview" class="preview-out"></p>
+                        </div>
+
+                        <button id="btn-save-formulas" class="btn btn-primary">Simpan Perubahan</button>
                     </div>
                 </div>
             </section>
 
-            <!-- Courier Page -->
-            <div id="page-courier" class="page">
-                <div class="header">
+            <!-- ========== COURIER ========== -->
+            <section id="page-courier" class="page">
+                <div class="page-header">
                     <h1>🚚 Log Perjalanan Kurir</h1>
-                    <p class="text-muted">Catat rute perjalanan secara manual menggunakan fitur pencatat waktu</p>
                 </div>
+                <p class="text-muted mb-2">Catat rute perjalanan dengan pencatat waktu otomatis.</p>
 
-                <div class="dashboard-grid">
-                    <div class="glass-card kurir-form-only">
-                        <div class="card-header">
-                            <h2>📝 Form Pencatatan</h2>
-                        </div>
+                <div class="courier-grid">
+                    <div class="card kurir-form-only" id="courier-form-card">
+                        <div class="card-header"><h2>📝 Form Pencatatan</h2></div>
                         <div class="card-body">
-                            <form id="courier-form" class="form-row" style="flex-direction: column;">
-                                <div style="position: relative; width: 100%; margin-top: 5px;">
-                                    <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Lokasi Asal</label>
-                                    <input type="text" id="courier-from" class="input-field" placeholder="Ketik Lokasi Asal..." autocomplete="off" style="width: 100%;" required>
+                            <form id="courier-form" class="form-stack">
+                                <div class="form-group">
+                                    <label class="form-label" for="courier-from">Lokasi Asal</label>
+                                    <input type="text" id="courier-from" class="input-field" placeholder="Ketik lokasi asal…" autocomplete="off" required>
                                 </div>
-                                <div style="position: relative; width: 100%; margin-top: 10px;">
-                                    <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Lokasi Tujuan</label>
-                                    <input type="text" id="courier-to" class="input-field" placeholder="Ketik Lokasi Tujuan..." autocomplete="off" style="width: 100%;" required>
+                                <div class="form-group">
+                                    <label class="form-label" for="courier-to">Lokasi Tujuan</label>
+                                    <input type="text" id="courier-to" class="input-field" placeholder="Ketik lokasi tujuan…" autocomplete="off" required>
                                 </div>
-                                <div style="position: relative; width: 100%; margin-top: 10px;">
-                                    <label style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px; display: block;">Jarak (KM)</label>
-                                    <input type="text" inputmode="decimal" id="courier-distance" class="input-field" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off" style="width: 100%; font-size: 1.2rem; font-weight: bold; color: var(--accent);" required>
+                                <div class="form-group">
+                                    <label class="form-label" for="courier-distance">Jarak (KM)</label>
+                                    <input type="text" inputmode="decimal" id="courier-distance" class="input-field input-lg" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off" required>
                                 </div>
-                                <div style="width: 100%; text-align: right; margin-top: 15px;">
-                                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 8px;">🚀 Mulai Jalan</button>
-                                </div>
+                                <button type="submit" class="btn btn-primary btn-block">🚀 Mulai Jalan</button>
                             </form>
                         </div>
                     </div>
 
-                    <div class="glass-card" id="courier-rekap-card" style="align-self: start;">
-                        <div class="card-header">
-                            <h2>💰 Rekap Komisi Kurir (Bulan Ini)</h2>
-                        </div>
+                    <div class="card" id="courier-rekap-card">
+                        <div class="card-header"><h2>💰 Rekap Komisi (Bulan Ini)</h2></div>
                         <div class="card-body">
-                            <div class="kpi-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-                                <div class="kpi-card" style="padding: 1rem;">
-                                    <div class="kpi-title">Total Waktu Tempuh</div>
-                                    <div class="kpi-value" id="rekap-waktu">00:00:00</div>
+                            <div class="rekap-grid">
+                                <div class="rekap-item">
+                                    <span class="rekap-title">Total Waktu Tempuh</span>
+                                    <span class="rekap-value mono" id="rekap-waktu">00:00:00</span>
                                 </div>
-                                <div class="kpi-card" style="padding: 1rem;">
-                                    <div class="kpi-title">Total Jarak</div>
-                                    <div class="kpi-value" id="rekap-jarak">0 KM</div>
+                                <div class="rekap-item">
+                                    <span class="rekap-title">Total Jarak</span>
+                                    <span class="rekap-value" id="rekap-jarak">0 KM</span>
                                 </div>
-                                <div class="kpi-card" style="padding: 1rem;">
-                                    <div class="kpi-title">Total Komisi</div>
-                                    <div class="kpi-value" id="rekap-komisi" style="color: var(--success);">Rp 0</div>
+                                <div class="rekap-item">
+                                    <span class="rekap-title">Total Komisi</span>
+                                    <span class="rekap-value text-success" id="rekap-komisi">Rp 0</span>
                                 </div>
                             </div>
-                            <div id="admin-courier-filter-wrapper" style="margin-top: 1rem; display: none;">
-                                <label style="font-size: 0.85em; color: var(--text-secondary);">Pilih Kurir (Khusus Admin):</label>
-                                <select id="filter-courier-user" class="input-field" style="width: 100%; padding: 6px; margin-top: 4px;">
-                                </select>
+                            <div id="admin-courier-filter-wrapper" class="form-group mt-2" hidden>
+                                <label class="form-label" for="filter-courier-user">Pilih Kurir (khusus admin)</label>
+                                <select id="filter-courier-user" class="input-field"></select>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-card" style="margin-top: 2rem;">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                        <h2 style="margin: 0;">📋 Riwayat Perjalanan (Bulan Ini)</h2>
-                        <div id="admin-courier-actions" style="display: none; gap: 10px;">
-                            <button class="btn btn-secondary btn-sm" onclick="Courier.exportToExcel()">📥 Export Excel</button>
-                            <button class="btn btn-secondary btn-sm" onclick="Courier.downloadTemplate()">📄 Download Template</button>
-                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('import-courier-logs').click()">📤 Import Excel Lama</button>
-                            <input type="file" id="import-courier-logs" accept=".xlsx, .xls, .csv" style="display: none;" onchange="Courier.importExcel(event)">
+                <div class="card mt-2">
+                    <div class="card-header card-header-row">
+                        <h2>📋 Riwayat Perjalanan (Bulan Ini)</h2>
+                        <div id="admin-courier-actions" class="table-actions" hidden>
+                            <button class="btn btn-secondary btn-sm" id="btn-courier-export">📥 Export</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-courier-template">📄 Template</button>
+                            <button class="btn btn-primary btn-sm" id="btn-courier-import">📤 Import</button>
+                            <input type="file" id="import-courier-logs" accept=".xlsx,.xls,.csv" hidden>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="table-wrapper">
-                            <table class="data-table">
+                            <table class="data-table courier-table">
                                 <thead>
                                     <tr>
-                                        <th>Date</th>
-                                        <th>Start Time</th>
-                                        <th>End Time</th>
-                                        <th>Asal</th>
-                                        <th>Tujuan</th>
-                                        <th width="80">Jarak</th>
-                                        <th>Status</th>
-                                        <th>Timer</th>
-                                        <th width="100">Komisi</th>
-                                        <th width="120" style="text-align: right;">Aksi</th>
+                                        <th>Tanggal</th><th>Mulai</th><th>Selesai</th>
+                                        <th>Asal</th><th>Tujuan</th><th class="num">Jarak</th>
+                                        <th>Status</th><th>Timer</th><th class="num">Komisi</th><th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="courier-table-body">
-                                    <tr><td colspan="6" style="text-align: center;">Memuat data...</td></tr>
+                                    <tr><td colspan="10" class="cell-empty">Memuat data…</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-            </div>
-            
+            </section>
+
         </main>
     </div>
 
-    <!-- ===== MODAL ===== -->
+    <!-- ===== GENERIC MODAL ===== -->
     <div id="modal-overlay" class="modal-overlay">
-        <div class="modal-content glass-card">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
             <div class="modal-header">
                 <h2 id="modal-title"></h2>
-                <button id="btn-modal-close" class="btn-icon modal-close">&times;</button>
+                <button id="btn-modal-close" class="btn-icon" aria-label="Tutup">&times;</button>
             </div>
             <div id="modal-body" class="modal-body"></div>
             <div id="modal-footer" class="modal-footer"></div>
         </div>
     </div>
 
-    <!-- ===== TOAST CONTAINER ===== -->
-    <div id="toast-container"></div>
-
-    <!-- Edit Courier Log Modal for Super Admin -->
-    <div id="edit-courier-modal" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-        <div class="modal-content glass-card" style="background: var(--bg-primary); width: 90%; max-width: 400px; padding: 20px; border-radius: var(--radius); position: relative; opacity: 1; transform: scale(1);">
-            <button class="btn-icon" onclick="document.getElementById('edit-courier-modal').style.display='none'" style="position: absolute; right: 10px; top: 10px;">✖</button>
-            <h3 style="margin-top: 0;">Edit Log Kurir</h3>
-            <form id="edit-courier-form" style="display: flex; flex-direction: column; gap: 10px;">
+    <!-- ===== EDIT COURIER MODAL ===== -->
+    <div id="edit-courier-modal" class="modal-overlay">
+        <div class="modal-content modal-sm" role="dialog" aria-modal="true" aria-labelledby="edit-courier-title">
+            <div class="modal-header">
+                <h2 id="edit-courier-title">Edit Log Kurir</h2>
+                <button class="btn-icon" data-close-edit-courier aria-label="Tutup">&times;</button>
+            </div>
+            <form id="edit-courier-form" class="modal-body form-stack">
                 <input type="hidden" id="edit-courier-id">
-                
-                <label style="font-size: 0.9em; color: var(--text-secondary);">Lokasi Asal</label>
-                <input type="text" id="edit-courier-from" class="input-field" required>
-                
-                <label style="font-size: 0.9em; color: var(--text-secondary);">Lokasi Tujuan</label>
-                <input type="text" id="edit-courier-to" class="input-field" required>
-                
-                <label style="font-size: 0.9em; color: var(--text-secondary);">Jarak (KM)</label>
-                <input type="text" inputmode="decimal" id="edit-courier-distance" class="input-field" placeholder="Contoh: 5.5" required>
-
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('edit-courier-modal').style.display='none'">Batal</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Simpan Edit</button>
+                <div class="form-group">
+                    <label class="form-label" for="edit-courier-from">Lokasi Asal</label>
+                    <input type="text" id="edit-courier-from" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="edit-courier-to">Lokasi Tujuan</label>
+                    <input type="text" id="edit-courier-to" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="edit-courier-distance">Jarak (KM)</label>
+                    <input type="text" inputmode="decimal" id="edit-courier-distance" class="input-field" placeholder="Contoh: 5.5" required>
+                </div>
+                <div class="modal-footer modal-footer-flush">
+                    <button type="button" class="btn btn-secondary" data-close-edit-courier>Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Edit</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <div id="toast-container" aria-live="polite"></div>
+
     <!-- ===== SCRIPTS ===== -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=81"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module" src="js/main.js?v=100"></script>
 </body>
 
 </html>
