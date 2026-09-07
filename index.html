@@ -146,46 +146,35 @@
             <!-- ========== DASHBOARD ========== -->
             <section id="page-dashboard" class="page admin-only">
                 <div class="page-header">
-                    <h1>📊 Dashboard Analisis</h1>
-                    <span id="dashboard-date-label" class="date-label"></span>
+                    <h1>📊 Dashboard</h1>
+                    <div class="page-header-actions">
+                        <span id="dashboard-date-label" class="date-label"></span>
+                        <button id="btn-dash-refresh" class="btn btn-ghost btn-sm" title="Muat ulang">↻ Refresh</button>
+                    </div>
                 </div>
 
                 <div id="kpi-grid" class="kpi-grid"></div>
 
-                <div class="card mb-2">
-                    <div class="card-header mobile-collapsible collapsed">
-                        <h2><span>📈 Tren Total Stok per Brand</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        <select id="chart-timeframe" class="input-field input-inline">
-                            <option value="7">7 hari terakhir</option>
-                            <option value="14">14 hari terakhir</option>
-                            <option value="30">30 hari terakhir</option>
-                        </select>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-box"><canvas id="brandChart"></canvas></div>
-                    </div>
-                </div>
-
                 <div class="dashboard-grid">
                     <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>🚨 Price Alert Harian</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
+                            <h2><span>💰 Perubahan Harga</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
-                        <div class="card-body scrollable" id="price-alert-list">
-                            <div class="empty-state-sm">Belum ada data perbandingan</div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>📦 Analisis Stok Harian</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
-                        </div>
-                        <div class="card-body scrollable" id="stock-alert-list">
-                            <div class="empty-state-sm">Belum ada data perbandingan</div>
+                        <div class="card-body scrollable" id="dash-price-moves">
+                            <div class="empty-state-sm">Belum ada data</div>
                         </div>
                     </div>
                     <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>🚚 Rekomendasi Tarik ke Serpong</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
+                            <h2><span>⚠️ Perlu Perhatian — Stok</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
+                        </div>
+                        <div class="card-body scrollable" id="dash-stock-attention">
+                            <div class="empty-state-sm">Belum ada data</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header mobile-collapsible collapsed">
+                            <h2><span>🚚 Tarik ke Serpong</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
                         <div class="card-body">
                             <div class="table-wrapper table-scroll-y">
@@ -198,7 +187,7 @@
                     </div>
                     <div class="card">
                         <div class="card-header mobile-collapsible collapsed">
-                            <h2><span>🔄 Rekomendasi Retur ke Harco</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
+                            <h2><span>🔄 Retur ke Harco</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
                         </div>
                         <div class="card-body">
                             <div class="table-wrapper table-scroll-y">
@@ -209,6 +198,14 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card dashboard-grid-full">
+                        <div class="card-header mobile-collapsible collapsed">
+                            <h2><span>✨ Barang Baru Hari Ini</span><span class="mobile-collapse-toggle" aria-hidden="true">▾</span></h2>
+                        </div>
+                        <div class="card-body scrollable" id="dash-new-items">
+                            <div class="empty-state-sm">Belum ada data</div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -217,31 +214,42 @@
                 <div class="page-header">
                     <h1>📋 Master Price List</h1>
                     <div class="page-header-actions">
-                        <label class="admin-only inline-field">Tanggal
-                            <input type="date" id="pricelist-date-select" class="input-field">
-                        </label>
-                        <button id="btn-export" class="btn btn-primary btn-sm">📊 Export Excel</button>
+                        <button id="btn-pl-refresh" class="btn btn-ghost btn-sm" title="Muat ulang data">↻ Refresh</button>
+                        <button id="btn-pl-upload" class="btn btn-primary btn-sm admin-only">⬆️ Upload</button>
+                        <button id="btn-export" class="btn btn-secondary btn-sm">📊 Export</button>
                         <button id="btn-toggle-distribusi" class="btn btn-secondary btn-sm" hidden>Tampilkan Distribusi</button>
                     </div>
                 </div>
 
-                <div class="pricelist-meta">
-                    <span id="pricelist-date-display" class="date-label"></span>
-                    <span class="pricelist-meta-right">
-                        <span id="pricelist-count" class="muted-count"></span>
-                        <button id="btn-clear-filters" class="btn btn-ghost btn-sm" hidden>Hapus filter</button>
-                    </span>
+                <div class="pl-toolbar">
+                    <input type="search" id="pl-search" class="input-field pl-search" placeholder="Cari nama barang, SKU, PN…" autocomplete="off">
+                    <label class="admin-only inline-field">Tanggal
+                        <input type="date" id="pricelist-date-select" class="input-field">
+                    </label>
+                    <select id="pl-sort" class="input-field input-inline" aria-label="Urutkan">
+                        <option value="no">Urutan asli</option>
+                        <option value="deskripsi">Nama A–Z</option>
+                        <option value="total">Stok terbanyak</option>
+                        <option value="total-asc">Stok tersedikit</option>
+                        <option value="distribusi">Distribusi tertinggi</option>
+                        <option value="change">Paling banyak berubah</option>
+                    </select>
                 </div>
 
-                <div class="table-wrapper table-scroll-y" id="pricelist-scroll">
-                    <table id="pricelist-table" class="data-table">
-                        <thead>
-                            <tr id="pricelist-header-row"></tr>
-                            <tr id="pricelist-filter-row" class="filter-row"></tr>
-                        </thead>
-                        <tbody id="pricelist-body"></tbody>
-                    </table>
+                <div class="pl-chips" role="group" aria-label="Filter cepat">
+                    <button class="chip" data-filter="all" aria-pressed="true">Semua</button>
+                    <button class="chip" data-filter="new" aria-pressed="false">Barang baru</button>
+                    <button class="chip" data-filter="price-changed" aria-pressed="false">Harga berubah</button>
+                    <button class="chip" data-filter="stock-low" aria-pressed="false">Stok menipis</button>
+                    <button class="chip" data-filter="oos" aria-pressed="false">Stok habis</button>
                 </div>
+
+                <div class="pl-meta">
+                    <span id="pricelist-date-display"></span>
+                    <span id="pricelist-count" class="muted-count"></span>
+                </div>
+
+                <div id="pricelist-list" class="pl-list"></div>
             </section>
 
             <!-- ========== REPORTS ========== -->
@@ -474,7 +482,6 @@
     <!-- ===== SCRIPTS ===== -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module" src="js/main.js?v=100"></script>
 </body>
