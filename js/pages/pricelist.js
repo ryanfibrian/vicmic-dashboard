@@ -40,6 +40,8 @@ const SORTS = {
   deskripsi: (a, b) => compareValues(a.deskripsi, b.deskripsi, 'text'),
   total: (a, b) => (b.total || 0) - (a.total || 0),
   'total-asc': (a, b) => (a.total || 0) - (b.total || 0),
+  harga: (a, b) => (b.hargaOnline || 0) - (a.hargaOnline || 0),
+  'harga-asc': (a, b) => (a.hargaOnline || 0) - (b.hargaOnline || 0),
   distribusi: (a, b) => (b.distribusi || 0) - (a.distribusi || 0),
   change: (a, b) => changeScore(b) - changeScore(a),
 };
