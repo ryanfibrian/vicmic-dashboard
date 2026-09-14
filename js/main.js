@@ -31,7 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Logout.
-  document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    Courier.stopTracking();
+    Auth.logout();
+  });
 
   // Modal close.
   document.getElementById('btn-modal-close').addEventListener('click', hideModal);
