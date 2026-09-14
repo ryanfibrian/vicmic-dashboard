@@ -324,18 +324,20 @@
                             <form id="courier-form" class="form-stack">
                                 <div class="form-group">
                                     <label class="form-label" for="courier-from">Lokasi Asal</label>
-                                    <input type="text" id="courier-from" class="input-field" placeholder="Ketik lokasi asal…" autocomplete="off" required>
+                                    <input type="text" id="courier-from" class="input-field" list="courier-location-list" placeholder="Ketik lokasi asal…" autocomplete="off" required>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="courier-to">Lokasi Tujuan</label>
-                                    <input type="text" id="courier-to" class="input-field" placeholder="Ketik lokasi tujuan…" autocomplete="off" required>
+                                    <input type="text" id="courier-to" class="input-field" list="courier-location-list" placeholder="Ketik lokasi tujuan…" autocomplete="off" required>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="courier-distance">Jarak (KM)</label>
                                     <input type="text" inputmode="decimal" id="courier-distance" class="input-field input-lg" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off" required>
+                                    <p class="route-hint" id="courier-distance-hint"></p>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-block">🚀 Mulai Jalan</button>
                             </form>
+                            <datalist id="courier-location-list"></datalist>
                         </div>
                     </div>
 
@@ -419,15 +421,16 @@
                 <input type="hidden" id="edit-courier-id">
                 <div class="form-group">
                     <label class="form-label" for="edit-courier-from">Lokasi Asal</label>
-                    <input type="text" id="edit-courier-from" class="input-field" required>
+                    <input type="text" id="edit-courier-from" class="input-field" list="courier-location-list" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="edit-courier-to">Lokasi Tujuan</label>
-                    <input type="text" id="edit-courier-to" class="input-field" required>
+                    <input type="text" id="edit-courier-to" class="input-field" list="courier-location-list" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="edit-courier-distance">Jarak (KM)</label>
                     <input type="text" inputmode="decimal" id="edit-courier-distance" class="input-field" placeholder="Contoh: 5.5" required>
+                    <p class="route-hint" id="edit-courier-distance-hint"></p>
                 </div>
                 <div class="modal-footer modal-footer-flush">
                     <button type="button" class="btn btn-secondary" data-close-edit-courier>Batal</button>
