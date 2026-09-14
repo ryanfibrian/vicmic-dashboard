@@ -1,0 +1,20 @@
+{
+  "name": "vicmic-kurir",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vicmic Kurir — companion Android app for the courier role: start/finish trips and keep sending GPS position in the background, using the same Supabase backend as the main dashboard.",
+  "scripts": {
+    "sync": "cap sync android",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.6.9",
+    "@capacitor/app": "7.1.2",
+    "@capacitor/browser": "7.0.5",
+    "@capacitor/core": "7.6.9",
+    "@capacitor-community/background-geolocation": "1.2.26"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.6.9"
+  }
+}

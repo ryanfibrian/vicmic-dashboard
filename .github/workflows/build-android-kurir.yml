@@ -1,0 +1,87 @@
+name: Build Vicmic Kurir APK
+
+# Builds the courier companion Android app (android-kurir/) into a
+# debug-signed, installable APK — free (GitHub Actions minutes + open-source
+# tooling only), no local Android Studio needed. Download the result from
+# this run's "Artifacts" section, or from the "vicmic-kurir-debug-apk"
+# artifact after a manual run (Actions tab -> this workflow -> Run workflow).
+
+on:
+  push:
+    paths:
+      - 'android-kurir/**'
+      - '.github/workflows/build-android-kurir.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup JDK 21
+        # Capacitor 7's generated capacitor.build.gradle sets
+        # sourceCompatibility/targetCompatibility to Java 21 — compiling with
+        # an older JDK fails, since javac can't target newer bytecode than
+        # the JDK it's running on.
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # A fresh CI VM has no ~/.android/debug.keystore, so the Android Gradle
+      # Plugin would mint a NEW one on every run — and Android refuses to
+      # install an update signed with a different key over the previous
+      # install ("App not installed"). Caching one keystore keeps every
+      # build's signature identical across pushes, so an updated APK can
+      # always be installed over the last one. A debug keystore isn't
+      # sensitive (well-known default password "android"), so caching it
+      # plainly is fine — this is not a release/production signing key.
+      - name: Cache debug keystore
+        id: keystore-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: vicmic-kurir-debug-keystore-v1
+
+      - name: Generate debug keystore if not cached
+        if: steps.keystore-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -v -keystore ~/.android/debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Vicmic Kurir Debug,O=Vicmic,C=ID"
+
+      - name: Install npm dependencies
+        working-directory: android-kurir
+        run: npm ci
+
+      - name: Sync Capacitor native project
+        working-directory: android-kurir
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android-kurir/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vicmic-kurir-debug-apk
+          path: android-kurir/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 60

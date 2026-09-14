@@ -29,12 +29,18 @@ terisi. `js/config.js` juga sudah memakai Client ID ini. Jadi yang tersisa hanya
    - `https://vicmic-dashboard.vercel.app`
    - `http://localhost:8000` (opsional, untuk tes lokal)
    Lalu **Save**. Perubahan origin bisa butuh 5 menit–beberapa jam untuk aktif.
-2. *(Opsional, biar rapi)* **Authorized redirect URIs** tambahkan
-   `https://dpnndfgeyuqblpbfzlii.supabase.co/auth/v1/callback`.
+2. **Authorized redirect URIs** tambahkan `https://dpnndfgeyuqblpbfzlii.supabase.co/auth/v1/callback`.
+   Dulu opsional (web pakai `signInWithIdToken()`, tidak butuh redirect) — **sekarang wajib**
+   kalau mau pakai app Android Kurir (`android-kurir/`), karena dia login lewat
+   `signInWithOAuth()` yang benar-benar redirect ke Google lalu balik lagi lewat URL ini.
 3. *(Opsional)* Supabase **Authentication → URL Configuration**: **Site URL** =
    `https://vicmic-dashboard.vercel.app`.
 4. Kalau nanti login gagal dengan error soal **nonce**, buka Supabase → Auth → Providers →
    Google, nyalakan **Skip nonce checks**, Save.
+5. **Khusus app Android Kurir:** di Supabase **Authentication → URL Configuration → Redirect
+   URLs**, tambahkan `vicmickurir://auth-callback`. Tanpa ini, `signInWithOAuth()` di app akan
+   ditolak Supabase karena URL redirect-nya tidak ada di allow-list. Detail lain di
+   [`android-kurir/README.md`](../android-kurir/README.md).
 
 > Entri origin lama `https://tbsgctmcbaxgkttlriml.supabase.co` (project Supabase lama yang
 > tidak terpakai) boleh dibiarkan — tidak mengganggu.

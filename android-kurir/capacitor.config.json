@@ -1,0 +1,8 @@
+{
+  "appId": "com.vicmic.kurir",
+  "appName": "Vicmic Kurir",
+  "webDir": "www",
+  "android": {
+    "useLegacyBridge": true
+  }
+}

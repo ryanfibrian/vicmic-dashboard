@@ -28,7 +28,16 @@ js/
 supabase/
   migrations/*.sql    # RLS + auth + skema (diterapkan manual, lihat SETUP.md)
   SETUP.md            # langkah setup Supabase
+android-kurir/        # app Android kurir (Capacitor) — lihat android-kurir/README.md
 ```
+
+## App Android Kurir (opsional)
+
+`android-kurir/` adalah app pendamping untuk kurir: mulai/selesaikan perjalanan dan kirim
+posisi GPS ke admin **di latar belakang** (layar terkunci tetap jalan), pakai backend
+Supabase yang sama. Ini pelengkap Log Kurir di web — dipakai kalau tracking berbasis
+browser (yang hanya jalan selagi tab terbuka) tidak cukup. Detail build & setup ada di
+[`android-kurir/README.md`](android-kurir/README.md).
 
 ## Menjalankan lokal
 

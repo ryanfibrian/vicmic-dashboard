@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Vicmic Kurir</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="view-login" class="view">
+    <div class="login-card">
+      <h1>🚚 Vicmic Kurir</h1>
+      <p class="muted small">Login dengan akun Google yang sudah terdaftar sebagai kurir di Vicmic Dashboard.</p>
+      <button id="btn-google-login" class="btn btn-primary btn-block">Masuk dengan Google</button>
+      <p id="login-error" class="error-text"></p>
+    </div>
+  </div>
+
+  <div id="view-trip" class="view" hidden>
+    <header class="topbar">
+      <div>
+        <strong id="user-name">–</strong>
+        <div class="muted small" id="user-email">–</div>
+      </div>
+      <button id="btn-logout" class="btn btn-ghost btn-sm">Keluar</button>
+    </header>
+
+    <main class="content">
+      <div id="status-banner" class="status-banner" hidden></div>
+
+      <div id="card-start" class="card" hidden>
+        <h2>📝 Mulai Perjalanan</h2>
+        <div class="field">
+          <label for="f-from">Lokasi Asal</label>
+          <input type="text" id="f-from" placeholder="Ketik lokasi asal…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-to">Lokasi Tujuan</label>
+          <input type="text" id="f-to" placeholder="Ketik lokasi tujuan…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-distance">Jarak (KM)</label>
+          <input type="text" inputmode="decimal" id="f-distance" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off">
+        </div>
+        <button id="btn-start" class="btn btn-primary btn-block">🚀 Mulai Jalan</button>
+      </div>
+
+      <div id="card-active" class="card" hidden>
+        <h2>🛵 Sedang Jalan</h2>
+        <p><span class="muted">Dari</span> — <strong id="active-from"></strong></p>
+        <p><span class="muted">Ke</span> — <strong id="active-to"></strong></p>
+        <p><span class="muted">Jarak</span> — <strong id="active-km"></strong> KM</p>
+        <div class="mono" id="active-timer">00:00:00</div>
+        <p class="gps-indicator" id="gps-indicator">📍 GPS aktif — posisi terkirim ke admin tiap ±15 detik</p>
+        <button id="btn-finish" class="btn btn-danger btn-block">✅ Selesai</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
