@@ -60,6 +60,7 @@ Buka **SQL Editor**, jalankan isi file berikut satu per satu, sesuai urutan:
 | 4 | `migrations/004_settings_seed.sql` | Seed `courier_rate_per_km = 300` |
 | 5 | `migrations/005_retention_cron.sql` | *(opsional)* pg_cron untuk hapus data lama otomatis |
 | 6 | `migrations/006_courier_position.sql` | Tambah kolom `last_lat`, `last_lng`, `last_ping_at` di `courier_logs` untuk live tracking GPS kurir |
+| 7 | `migrations/007_courier_favorites.sql` | Tabel `courier_favorite_addresses` — alamat favorit kurir di app Android (`android-kurir/`) |
 
 Kalau migration 5 dijalankan, aktifkan dulu extension **pg_cron** di
 **Database → Extensions**.

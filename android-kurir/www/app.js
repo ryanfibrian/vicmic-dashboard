@@ -7,10 +7,23 @@
 // Custom Tab, not this app's own WebView — Google blocks sign-in inside
 // embedded webviews) -> deep link back into the app -> exchange the code for
 // a session -> start/finish a trip -> background GPS ping while it runs.
+//
+// Location picking (Gojek-style: tap a field, pick a point on a map or
+// search a place, distance auto-calculated) uses free/keyless public
+// services — no billing, but also no uptime guarantee, so every call here
+// degrades to "fill it in manually" on failure rather than blocking:
+//   - Leaflet + OpenStreetMap tiles: the map itself.
+//   - Photon (photon.komoot.io): place search + reverse geocoding.
+//   - OSRM (router.project-osrm.org): driving-distance route calculation.
 // ============================================================================
 
 const { App, Browser, BackgroundGeolocation } = window.Capacitor?.Plugins || {};
 const CFG = window.VICMIC_CONFIG;
+
+const PHOTON_SEARCH = 'https://photon.komoot.io/api/';
+const PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
+const OSRM_ROUTE = 'https://router.project-osrm.org/route/v1/driving/';
+const DEFAULT_MAP_CENTER = [-6.25, 106.7]; // Jabodetabek-ish; overridden once a point is picked
 
 const supabase = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
   auth: {
@@ -28,13 +41,28 @@ const state = {
   courierRate: CFG.DEFAULT_COURIER_RATE_PER_KM,
   lastPingAt: 0,
   timerInterval: null,
+
+  points: { from: null, to: null }, // { lat, lng, label } once picked via map/search/favorite
+  lastAutoKm: null,
+
+  picker: { target: null, map: null, center: null, address: '', searchResults: [] },
+  favTarget: null,
+  favorites: [],
 };
 
 const $ = (id) => document.getElementById(id);
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function parseDecimalId(raw) {
   // Same rule as the dashboard: "." is a thousands separator, "," is decimal.
   return parseFloat(String(raw ?? '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, ''));
+}
+
+function formatKm(n) {
+  return String(Math.round(n * 10) / 10).replace('.', ',');
 }
 
 function formatDuration(ms) {
@@ -244,6 +272,9 @@ async function startTrip() {
     $('f-from').value = '';
     $('f-to').value = '';
     $('f-distance').value = '';
+    delete $('f-distance').dataset.auto;
+    state.points = { from: null, to: null };
+    clearDistanceHint();
     state.trip = inserted;
     renderActive();
     startWatcher(inserted.id);
@@ -341,6 +372,270 @@ async function pingPosition(tripId, location) {
   if (error) console.warn('pingPosition:', error.message);
 }
 
+// ---- location fields: invalidate the stored point on manual edit --------
+// A point (lat/lng) is only trustworthy as long as the text matches what was
+// picked. Once the courier types over it by hand, drop the point so a stale
+// coordinate doesn't silently feed into the distance calculation.
+
+function wireLocationField(inputId, target) {
+  $(inputId).addEventListener('input', () => {
+    state.points[target] = null;
+    clearDistanceHint();
+  });
+}
+
+// ---- distance auto-calc (OSRM) -------------------------------------------
+
+function clearDistanceHint() {
+  $('distance-hint').innerHTML = '';
+}
+
+async function recalcDistance() {
+  const { from, to } = state.points;
+  if (!from || !to) return;
+  const hintEl = $('distance-hint');
+  hintEl.textContent = 'Menghitung jarak…';
+  try {
+    const url = `${OSRM_ROUTE}${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.code !== 'Ok' || !json.routes?.length) throw new Error('Rute tidak ditemukan');
+
+    const km = Math.round((json.routes[0].distance / 1000) * 10) / 10;
+    state.lastAutoKm = km;
+    const kmText = formatKm(km);
+    const distEl = $('f-distance');
+    const isEmpty = !distEl.value.trim();
+    const isStaleAuto = distEl.dataset.auto === '1';
+
+    if (isEmpty || isStaleAuto) {
+      distEl.value = kmText;
+      distEl.dataset.auto = '1';
+      hintEl.innerHTML = `✓ Jarak dihitung otomatis: ${kmText} KM`;
+    } else {
+      hintEl.innerHTML = `Jarak rute: <strong>${kmText} KM</strong> · <button type="button" id="btn-use-auto-km" class="link-btn">pakai</button>`;
+    }
+  } catch (e) {
+    console.warn('recalcDistance:', e);
+    hintEl.textContent = 'Gagal hitung jarak otomatis — isi manual.';
+  }
+}
+
+function applyAutoKm() {
+  if (state.lastAutoKm == null) return;
+  const distEl = $('f-distance');
+  distEl.value = formatKm(state.lastAutoKm);
+  distEl.dataset.auto = '1';
+  $('distance-hint').innerHTML = `✓ Jarak dihitung otomatis: ${formatKm(state.lastAutoKm)} KM`;
+}
+
+// ---- map picker: tap a field's 🗺️ button to open ------------------------
+// Gojek-style — a pin fixed at screen-center, the map pans underneath it,
+// and the address is reverse-geocoded whenever the map stops moving.
+
+function ensurePickerMap() {
+  if (state.picker.map) return;
+  state.picker.map = L.map('mappicker-map', { zoomControl: true }).setView(DEFAULT_MAP_CENTER, 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(state.picker.map);
+  state.picker.map.on('moveend', () => reverseGeocodeCenter());
+}
+
+function openMapPicker(target) {
+  state.picker.target = target;
+  $('mappicker-title').textContent = target === 'from' ? 'Lokasi Asal' : 'Lokasi Tujuan';
+  $('mp-search').value = '';
+  hideSearchResults();
+  $('view-mappicker').hidden = false;
+
+  ensurePickerMap();
+  setTimeout(() => state.picker.map.invalidateSize(), 50);
+
+  const existing = state.points[target];
+  if (existing) {
+    state.picker.center = { lat: existing.lat, lng: existing.lng };
+    setPickerAddress(existing.label);
+    state.picker.map.setView([existing.lat, existing.lng], 16);
+  } else if (target === 'from' && navigator.geolocation) {
+    setPickerAddress('Mencari lokasi Anda…');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => state.picker.map.setView([pos.coords.latitude, pos.coords.longitude], 16),
+      () => reverseGeocodeCenter(),
+      { timeout: 6000 }
+    );
+  } else {
+    reverseGeocodeCenter();
+  }
+}
+
+function closeMapPicker() {
+  $('view-mappicker').hidden = true;
+  state.picker.target = null;
+}
+
+function confirmMapPicker() {
+  const target = state.picker.target;
+  if (!target || !state.picker.center) return;
+  state.points[target] = { ...state.picker.center, label: state.picker.address };
+  $(target === 'from' ? 'f-from' : 'f-to').value = state.picker.address;
+  closeMapPicker();
+  recalcDistance();
+}
+
+function setPickerAddress(text) {
+  state.picker.address = text;
+  $('mp-address').textContent = text;
+}
+
+async function reverseGeocodeCenter() {
+  const map = state.picker.map;
+  const c = map.getCenter();
+  state.picker.center = { lat: c.lat, lng: c.lng };
+  setPickerAddress('Mencari alamat…');
+  try {
+    const url = `${PHOTON_REVERSE}?lon=${c.lng}&lat=${c.lat}&lang=id`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const label = formatPhotonFeature(json.features?.[0]) || `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
+    setPickerAddress(label);
+  } catch (e) {
+    console.warn('reverseGeocodeCenter:', e);
+    setPickerAddress(`${c.lat.toFixed(5)}, ${c.lng.toFixed(5)} (nama alamat tidak tersedia)`);
+  }
+}
+
+function formatPhotonFeature(f) {
+  if (!f) return '';
+  const p = f.properties || {};
+  return [p.name, p.street, p.district || p.city, p.state].filter(Boolean).join(', ');
+}
+
+// ---- place search (Photon) ------------------------------------------------
+
+let searchDebounce;
+function onSearchInput(e) {
+  clearTimeout(searchDebounce);
+  const q = e.target.value.trim();
+  if (q.length < 3) return hideSearchResults();
+  searchDebounce = setTimeout(() => runSearch(q), 400);
+}
+
+async function runSearch(q) {
+  try {
+    const url = `${PHOTON_SEARCH}?q=${encodeURIComponent(q)}&limit=6&lang=id`;
+    const res = await fetch(url);
+    const json = await res.json();
+    state.picker.searchResults = json.features || [];
+    renderSearchResults();
+  } catch (e) {
+    console.warn('runSearch:', e);
+  }
+}
+
+function renderSearchResults() {
+  const el = $('mp-search-results');
+  const results = state.picker.searchResults || [];
+  if (!results.length) return hideSearchResults();
+  el.innerHTML = results
+    .map((f, i) => `<div class="mp-search-result" data-idx="${i}">${escapeHtml(formatPhotonFeature(f) || 'Lokasi')}</div>`)
+    .join('');
+  el.hidden = false;
+}
+
+function hideSearchResults() {
+  $('mp-search-results').hidden = true;
+}
+
+function selectSearchResult(feature) {
+  if (!feature) return;
+  hideSearchResults();
+  $('mp-search').value = '';
+  const [lng, lat] = feature.geometry.coordinates;
+  state.picker.map.setView([lat, lng], 16); // moveend fires reverseGeocodeCenter
+}
+
+// ---- favorites: a separate saved-address list, not tied to history ------
+
+async function openFavorites(target) {
+  state.favTarget = target;
+  $('fav-modal').hidden = false;
+  $('btn-fav-save-current').hidden = !state.points[target];
+  $('fav-list').innerHTML = '<p class="fav-empty">Memuat…</p>';
+  await loadFavorites();
+  renderFavorites();
+}
+
+function closeFavorites() {
+  $('fav-modal').hidden = true;
+  state.favTarget = null;
+}
+
+async function loadFavorites() {
+  const { data, error } = await supabase
+    .from('courier_favorite_addresses')
+    .select('*')
+    .eq('user_email', state.user.email)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('loadFavorites:', error.message);
+    state.favorites = [];
+    return;
+  }
+  state.favorites = data || [];
+}
+
+function renderFavorites() {
+  const el = $('fav-list');
+  if (!state.favorites.length) {
+    el.innerHTML = '<p class="fav-empty">Belum ada alamat favorit.</p>';
+    return;
+  }
+  el.innerHTML = state.favorites
+    .map(
+      (f) => `
+      <div class="fav-item" data-id="${f.id}">
+        <span class="fav-item-text">${escapeHtml(f.address)}</span>
+        <button type="button" class="fav-item-del" data-del="${f.id}">🗑️</button>
+      </div>`
+    )
+    .join('');
+}
+
+function useFavorite(fav) {
+  const target = state.favTarget;
+  if (!target || !fav) return;
+  state.points[target] = { lat: fav.lat, lng: fav.lng, label: fav.address };
+  $(target === 'from' ? 'f-from' : 'f-to').value = fav.address;
+  closeFavorites();
+  recalcDistance();
+}
+
+async function saveFavoriteFromField() {
+  const target = state.favTarget;
+  const point = state.points[target];
+  if (!point) return;
+  const { error } = await supabase.from('courier_favorite_addresses').insert({
+    user_email: state.user.email,
+    address: point.label,
+    lat: point.lat,
+    lng: point.lng,
+  });
+  if (error) return showBanner('Gagal simpan favorit: ' + error.message);
+  $('btn-fav-save-current').hidden = true;
+  await loadFavorites();
+  renderFavorites();
+}
+
+async function deleteFavorite(id) {
+  const { error } = await supabase.from('courier_favorite_addresses').delete().eq('id', id);
+  if (!error) {
+    state.favorites = state.favorites.filter((f) => f.id !== id);
+    renderFavorites();
+  }
+}
+
 // ---- wiring ---------------------------------------------------------------
 
 function init() {
@@ -349,12 +644,55 @@ function init() {
   $('btn-start').addEventListener('click', startTrip);
   $('btn-finish').addEventListener('click', finishTrip);
 
+  wireLocationField('f-from', 'from');
+  wireLocationField('f-to', 'to');
+  $('f-distance').addEventListener('input', () => delete $('f-distance').dataset.auto);
+  $('distance-hint').addEventListener('click', (e) => {
+    if (e.target.id === 'btn-use-auto-km') applyAutoKm();
+  });
+
+  document.querySelectorAll('[data-pick]').forEach((btn) => btn.addEventListener('click', () => openMapPicker(btn.dataset.pick)));
+  document.querySelectorAll('[data-fav]').forEach((btn) => btn.addEventListener('click', () => openFavorites(btn.dataset.fav)));
+
+  $('btn-mappicker-cancel').addEventListener('click', closeMapPicker);
+  $('btn-mappicker-confirm').addEventListener('click', confirmMapPicker);
+  $('mp-search').addEventListener('input', onSearchInput);
+  $('mp-search-results').addEventListener('click', (e) => {
+    const item = e.target.closest('[data-idx]');
+    if (item) selectSearchResult(state.picker.searchResults[Number(item.dataset.idx)]);
+  });
+
+  $('btn-fav-close').addEventListener('click', closeFavorites);
+  $('btn-fav-save-current').addEventListener('click', saveFavoriteFromField);
+  $('fav-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'fav-modal') closeFavorites();
+  });
+  $('fav-list').addEventListener('click', (e) => {
+    const delBtn = e.target.closest('[data-del]');
+    if (delBtn) {
+      e.stopPropagation();
+      deleteFavorite(Number(delBtn.dataset.del));
+      return;
+    }
+    const item = e.target.closest('.fav-item');
+    if (item) useFavorite(state.favorites.find((f) => String(f.id) === item.dataset.id));
+  });
+
   App?.addListener('appUrlOpen', ({ url }) => handleDeepLink(url));
 
   // Resume tracking / trip state whenever the app comes back to the
   // foreground (e.g. reopened after Android killed the process).
   App?.addListener('resume', () => {
     if (state.user) loadState();
+  });
+
+  // Registering this listener suppresses Android's default back-button
+  // behaviour, so we own it: close whichever overlay is open, else exit.
+  App?.addListener('backButton', () => {
+    if (!$('mp-search-results').hidden) return hideSearchResults();
+    if (!$('view-mappicker').hidden) return closeMapPicker();
+    if (!$('fav-modal').hidden) return closeFavorites();
+    App.exitApp();
   });
 
   onAuthReady();

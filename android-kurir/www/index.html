@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Vicmic Kurir</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -33,15 +34,24 @@
         <h2>📝 Mulai Perjalanan</h2>
         <div class="field">
           <label for="f-from">Lokasi Asal</label>
-          <input type="text" id="f-from" placeholder="Ketik lokasi asal…" autocomplete="off">
+          <div class="loc-row">
+            <input type="text" id="f-from" placeholder="Ketik lokasi asal…" autocomplete="off">
+            <button type="button" class="btn-icon-sm" data-pick="from" title="Pilih di peta">🗺️</button>
+            <button type="button" class="btn-icon-sm" data-fav="from" title="Alamat favorit">⭐</button>
+          </div>
         </div>
         <div class="field">
           <label for="f-to">Lokasi Tujuan</label>
-          <input type="text" id="f-to" placeholder="Ketik lokasi tujuan…" autocomplete="off">
+          <div class="loc-row">
+            <input type="text" id="f-to" placeholder="Ketik lokasi tujuan…" autocomplete="off">
+            <button type="button" class="btn-icon-sm" data-pick="to" title="Pilih di peta">🗺️</button>
+            <button type="button" class="btn-icon-sm" data-fav="to" title="Alamat favorit">⭐</button>
+          </div>
         </div>
         <div class="field">
           <label for="f-distance">Jarak (KM)</label>
           <input type="text" inputmode="decimal" id="f-distance" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off">
+          <p class="route-hint" id="distance-hint"></p>
         </div>
         <button id="btn-start" class="btn btn-primary btn-block">🚀 Mulai Jalan</button>
       </div>
@@ -58,7 +68,41 @@
     </main>
   </div>
 
+  <!-- Full-screen map picker: tap a "🗺️" button on Lokasi Asal/Tujuan to open. -->
+  <div id="view-mappicker" class="view" hidden>
+    <header class="topbar">
+      <button type="button" id="btn-mappicker-cancel" class="btn btn-ghost btn-sm">✕ Batal</button>
+      <strong id="mappicker-title">Pilih Lokasi</strong>
+      <span style="width:52px"></span>
+    </header>
+    <div class="mp-search-wrap">
+      <input type="text" id="mp-search" class="mp-search-input" placeholder="Cari nama tempat / alamat…" autocomplete="off">
+      <div id="mp-search-results" class="mp-search-results" hidden></div>
+    </div>
+    <div class="mp-map-wrap">
+      <div id="mappicker-map" class="mp-map"></div>
+      <div class="mp-center-pin" aria-hidden="true">📍</div>
+    </div>
+    <div class="mp-bottom">
+      <p class="mp-address" id="mp-address">Geser peta untuk pilih titik…</p>
+      <button type="button" id="btn-mappicker-confirm" class="btn btn-primary btn-block">Gunakan Lokasi Ini</button>
+    </div>
+  </div>
+
+  <!-- Favorites bottom sheet: tap a "⭐" button to open. -->
+  <div id="fav-modal" class="modal-overlay" hidden>
+    <div class="modal-sheet">
+      <div class="modal-sheet-header">
+        <strong>⭐ Alamat Favorit</strong>
+        <button type="button" id="btn-fav-close" class="btn-icon-sm">✕</button>
+      </div>
+      <div id="fav-list" class="fav-list"></div>
+      <button type="button" id="btn-fav-save-current" class="btn btn-secondary btn-block" hidden>💾 Simpan lokasi field ini sebagai favorit</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

@@ -32,6 +32,9 @@ dari layar login Google.
 Kolom GPS (`last_lat`, `last_lng`, `last_ping_at`) di `courier_logs` juga harus sudah ada
 — itu migration `006_courier_position.sql`, sama seperti yang dipakai fitur peta di web.
 
+Tabel alamat favorit juga perlu dibuat — jalankan `migrations/007_courier_favorites.sql`
+sebelum memakai tombol ⭐ di app.
+
 ## 2. Build APK (tanpa Android Studio — pakai GitHub Actions, gratis)
 
 1. Push perubahan apa pun di folder `android-kurir/` (atau trigger manual: tab **Actions**
@@ -89,6 +92,26 @@ selesai → download APK baru → kirim ulang ke HP kurir → install menimpa ya
   ini trade-off yang tidak terhindarkan untuk tracking latar belakang yang akurat.
 - App ini sengaja dibuat minimal (cuma mulai/selesai perjalanan) — fitur lain (price
   list, rekap, dsb.) tetap di dashboard web, bukan dobel-dikerjakan di sini.
+
+## 6. Pilih lokasi di peta + hitung jarak otomatis
+
+Field **Lokasi Asal**/**Lokasi Tujuan** masing-masing punya dua tombol:
+
+- **🗺️ Pilih di peta** — buka peta ala Gojek: geser peta untuk pilih titik (pin selalu di
+  tengah layar), atau ketik nama tempat di kotak pencarian. Alamatnya otomatis muncul dari
+  titik yang dipilih (reverse geocoding).
+- **⭐ Alamat favorit** — pilih dari daftar alamat yang pernah disimpan kurir ini sendiri,
+  atau simpan lokasi yang baru dipilih supaya tidak perlu cari/ketik ulang lain kali.
+
+Begitu **Asal** dan **Tujuan** sudah sama-sama punya titik (dari peta atau favorit), jarak
+tempuh (KM) dihitung otomatis lewat rute jalan sungguhan (bukan garis lurus) dan mengisi
+field Jarak — tetap bisa diedit manual kalau perlu.
+
+Tiga layanan gratis/open-source di balik ini (tanpa API key, tanpa billing):
+**Leaflet + OpenStreetMap** (peta), **Photon** (cari tempat & reverse geocoding),
+**OSRM** (hitung jarak rute). Ini server demo publik, bukan layanan berbayar bergaransi
+uptime — kalau lagi lambat/gangguan, semua bagian ini gagal dengan sopan (pesan "isi
+manual"), tidak memblokir kurir untuk tetap mulai jalan dengan isi manual seperti biasa.
 
 ## Struktur
 

@@ -11,6 +11,12 @@
   --danger: #dc2626;
   --danger-bg: rgba(220, 38, 38, 0.1);
   --radius: 14px;
+  /* Android 15+ (targetSdk 35) draws content edge-to-edge by default, so the
+     WebView can render under the status/nav bar unless we pad for it
+     ourselves — that's the "elements overlapping" the top/bottom of the
+     screen. env(safe-area-inset-*) reports 0px where it doesn't apply. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; }
@@ -30,7 +36,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
 }
 .login-card {
   width: 100%;
@@ -47,11 +53,11 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: calc(16px + var(--safe-top)) 20px 16px;
   background: #fff;
   border-bottom: 1px solid var(--border);
 }
-.content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.content { padding: 16px calc(16px + env(safe-area-inset-right, 0px)) calc(16px + var(--safe-bottom)) calc(16px + env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
 
 .card {
   background: var(--bg-card);
@@ -86,6 +92,7 @@ html, body {
 .btn-primary { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-secondary { background: var(--bg-app); color: var(--accent-strong); border: 1px solid var(--border); }
 .btn:disabled { opacity: 0.6; }
 
 .muted { color: var(--text-muted); }
@@ -112,3 +119,114 @@ html, body {
   padding: 8px;
   margin-bottom: 14px;
 }
+
+.route-hint { min-height: 1.1em; font-size: 0.78rem; margin: 6px 0 0; color: var(--accent-strong); font-weight: 600; }
+.link-btn { background: none; border: none; padding: 0; margin-left: 2px; color: var(--accent-strong); font-weight: 700; font-size: inherit; text-decoration: underline; cursor: pointer; }
+
+/* ---- location field: text input + map-picker / favorites buttons ------ */
+.loc-row { display: flex; gap: 6px; align-items: stretch; }
+.loc-row input { flex: 1; min-width: 0; }
+.btn-icon-sm {
+  flex: 0 0 auto;
+  width: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfdfc;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-icon-sm:active { background: var(--border); }
+
+/* ---- full-screen map picker (Gojek-style: pin fixed at center, drag map
+   underneath, reverse-geocode on release) ------------------------------- */
+#view-mappicker { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.mp-search-wrap {
+  position: relative;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.mp-search-input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #fbfdfc;
+}
+.mp-search-input:focus { outline: none; border-color: var(--accent); }
+.mp-search-results {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 100%;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  max-height: 45vh;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 10px 24px rgba(20, 45, 30, 0.18);
+}
+.mp-search-result { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 0.85rem; cursor: pointer; }
+.mp-search-result:last-child { border-bottom: none; }
+.mp-search-result:active { background: var(--bg-app); }
+.mp-map-wrap { position: relative; flex: 1; min-height: 0; }
+.mp-map { position: absolute; inset: 0; }
+.mp-center-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -100%);
+  font-size: 2.1rem;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+  z-index: 10;
+}
+.mp-bottom {
+  padding: 14px 16px calc(14px + var(--safe-bottom));
+  background: #fff;
+  border-top: 1px solid var(--border);
+}
+.mp-address { font-size: 0.85rem; margin: 0 0 10px; min-height: 1.3em; font-weight: 600; }
+
+/* ---- favorites bottom sheet -------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 15, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+.modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(16px + var(--safe-bottom));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal-sheet-header { display: flex; align-items: center; justify-content: space-between; }
+.fav-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.fav-empty { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 12px 0; }
+.fav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.fav-item:active { background: var(--bg-app); }
+.fav-item-text { font-size: 0.85rem; flex: 1; }
+.fav-item-del { flex: 0 0 auto; background: none; border: none; color: var(--danger); font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 4px; }
