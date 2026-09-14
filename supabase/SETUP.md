@@ -59,6 +59,7 @@ Buka **SQL Editor**, jalankan isi file berikut satu per satu, sesuai urutan:
 | 3 | `migrations/003_data_uploads.sql` | Tabel `data_uploads` (ganti metadata nama file yang dulu di localStorage) |
 | 4 | `migrations/004_settings_seed.sql` | Seed `courier_rate_per_km = 300` |
 | 5 | `migrations/005_retention_cron.sql` | *(opsional)* pg_cron untuk hapus data lama otomatis |
+| 6 | `migrations/006_courier_position.sql` | Tambah kolom `last_lat`, `last_lng`, `last_ping_at` di `courier_logs` untuk live tracking GPS kurir |
 
 Kalau migration 5 dijalankan, aktifkan dulu extension **pg_cron** di
 **Database → Extensions**.
@@ -133,3 +134,8 @@ live.
 - Kalau nanti mau menyembunyikan kolom `distribusi` dari role `sales` di level database
   (sekarang hanya disembunyikan di UI), buat `view price_data_sales` tanpa kolom itu +
   policy khusus, lalu frontend query view tsb untuk non-admin. Belum dikerjakan di sini.
+- **Live tracking GPS kurir** (migration 6) memakai Geolocation API browser — gratis,
+  tanpa API key, tapi hanya jalan selagi tab/app kurir terbuka di foreground dan status
+  perjalanan "sedang jalan". Kalau layar kurir dikunci lama, update posisi bisa terhenti
+  sampai dibuka lagi — ini batasan bawaan tracking berbasis browser, bukan bug. Peta admin
+  pakai Leaflet.js + tile OpenStreetMap (keduanya open-source, tanpa key/billing).

@@ -25,6 +25,16 @@ export const Courier = {
   _locations: [],
   _routesLoaded: false,
 
+  // GPS tracking (browser Geolocation API — free, no key) + admin live map.
+  _geoWatchId: null,
+  _activeTripId: null,
+  _lastPingAt: 0,
+  _geoErrorShown: false,
+  _mapRefreshInterval: null,
+  _map: null,
+  _mapMarkers: new Map(), // trip id -> Leaflet marker
+  _hadMapMarkers: false,
+
   init() {
     if (this._wired) return;
     this._wired = true;
@@ -83,6 +93,9 @@ export const Courier = {
 
     if (this._timerInterval) clearInterval(this._timerInterval);
     this._timerInterval = setInterval(() => this.tickTimers(), 1000);
+
+    if (this._mapRefreshInterval) clearInterval(this._mapRefreshInterval);
+    this._mapRefreshInterval = setInterval(() => this.refreshMapIfVisible(), 15000);
   },
 
   tickTimers() {
@@ -91,6 +104,136 @@ export const Courier = {
       const diff = now - new Date(el.dataset.start).getTime();
       if (diff >= 0) el.textContent = formatDuration(diff);
     });
+  },
+
+  // ---- GPS tracking: browser Geolocation API, free, no key ---------------
+  // Only runs while a trip is "sedang jalan", and only pings while this
+  // device's tab is open/foregrounded — a browser can't reliably track in
+  // the background the way a native app could. Writes straight into the
+  // trip's own courier_logs row (last_lat/last_lng/last_ping_at), which the
+  // existing update policy already allows for the trip's owner or an admin.
+
+  startTracking(tripId) {
+    if (!navigator.geolocation) {
+      showToast('Perangkat/browser ini tidak mendukung GPS — posisi tidak akan terlihat admin.', 'warning');
+      return;
+    }
+    this.stopTracking();
+    this._activeTripId = tripId;
+    this._lastPingAt = 0;
+    this._geoErrorShown = false;
+    this._geoWatchId = navigator.geolocation.watchPosition(
+      (pos) => this.handlePosition(tripId, pos),
+      (err) => {
+        console.warn('geolocation:', err.message);
+        if (!this._geoErrorShown) {
+          this._geoErrorShown = true;
+          showToast('Lokasi GPS tidak tersedia: ' + err.message, 'warning');
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+    );
+  },
+
+  stopTracking() {
+    if (this._geoWatchId != null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(this._geoWatchId);
+    }
+    this._geoWatchId = null;
+    this._activeTripId = null;
+  },
+
+  async handlePosition(tripId, pos) {
+    const now = Date.now();
+    if (now - this._lastPingAt < 15000) return; // throttle writes to ~1/15s
+    this._lastPingAt = now;
+    const { error } = await supabaseClient
+      .from('courier_logs')
+      .update({
+        last_lat: pos.coords.latitude,
+        last_lng: pos.coords.longitude,
+        last_ping_at: new Date().toISOString(),
+      })
+      .eq('id', tripId);
+    if (error) console.warn('position ping:', error.message);
+  },
+
+  // Resumes tracking after a page reload if this user still has a trip
+  // running, and stops it if that trip isn't running anymore.
+  syncTrackingWithMyTrip(rows) {
+    const mine = rows.find((l) => l.status === 'sedang jalan' && l.user_email === Auth.currentUser?.email);
+    if (mine && this._activeTripId !== mine.id) this.startTracking(mine.id);
+    else if (!mine && this._activeTripId) this.stopTracking();
+  },
+
+  // ---- admin: live map of couriers currently "sedang jalan" -------------
+
+  initMap() {
+    if (this._map || !window.L) return;
+    const el = document.getElementById('courier-map');
+    if (!el) return;
+    this._map = L.map(el, { scrollWheelZoom: false }).setView([-6.25, 106.7], 11); // Jabodetabek default
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(this._map);
+  },
+
+  async refreshMapIfVisible() {
+    if (!Auth.isAdmin() || !this._map) return;
+    const page = document.getElementById('page-courier');
+    if (!page?.classList.contains('active')) return;
+
+    const { data, error } = await supabaseClient
+      .from('courier_logs')
+      .select('id, user_email, status, last_lat, last_lng')
+      .eq('status', 'sedang jalan');
+    if (error) return;
+    this.renderMapMarkers(data || []);
+  },
+
+  renderMapMarkers(rows) {
+    if (!this._map || !window.L) return;
+    const active = rows.filter((r) => r.status === 'sedang jalan' && r.last_lat != null && r.last_lng != null);
+
+    const seen = new Set();
+    for (const r of active) {
+      const id = String(r.id);
+      seen.add(id);
+      const label = escapeHtml((r.user_email || '').split('@')[0]);
+      let marker = this._mapMarkers.get(id);
+      if (marker) {
+        marker.setLatLng([r.last_lat, r.last_lng]);
+      } else {
+        const icon = L.divIcon({
+          className: 'courier-map-pin',
+          html: `<span class="pin-dot"></span><span class="pin-label">${label}</span>`,
+          iconSize: [0, 0],
+          iconAnchor: [8, 8],
+        });
+        marker = L.marker([r.last_lat, r.last_lng], { icon }).addTo(this._map);
+        this._mapMarkers.set(id, marker);
+      }
+    }
+    for (const [id, marker] of this._mapMarkers) {
+      if (!seen.has(id)) {
+        marker.remove();
+        this._mapMarkers.delete(id);
+      }
+    }
+
+    const statusEl = document.getElementById('courier-map-status');
+    if (statusEl) {
+      statusEl.textContent = active.length ? `${active.length} kurir sedang jalan` : 'Tidak ada kurir yang sedang jalan';
+    }
+
+    if (active.length && !this._hadMapMarkers) {
+      this._map.fitBounds(
+        L.latLngBounds(active.map((r) => [r.last_lat, r.last_lng])),
+        { padding: [40, 40], maxZoom: 15 }
+      );
+    }
+    this._hadMapMarkers = active.length > 0;
   },
 
   // ---- route memory: reuse past trips instead of retyping the KM ---------
@@ -235,25 +378,30 @@ export const Courier = {
       }
 
       const now = new Date();
-      const { error } = await supabaseClient.from('courier_logs').insert([
-        {
-          user_email: Auth.currentUser.email,
-          date: now.toISOString().split('T')[0],
-          time: now.toTimeString().substring(0, 5),
-          from_location: document.getElementById('courier-from').value.trim(),
-          to_location: document.getElementById('courier-to').value.trim(),
-          distance_km: distanceKm,
-          amount_rp: Math.round(distanceKm * PriceCalc.courierRatePerKm()),
-          status: 'sedang jalan',
-          start_time: now.toISOString(),
-        },
-      ]);
+      const { data: inserted, error } = await supabaseClient
+        .from('courier_logs')
+        .insert([
+          {
+            user_email: Auth.currentUser.email,
+            date: now.toISOString().split('T')[0],
+            time: now.toTimeString().substring(0, 5),
+            from_location: document.getElementById('courier-from').value.trim(),
+            to_location: document.getElementById('courier-to').value.trim(),
+            distance_km: distanceKm,
+            amount_rp: Math.round(distanceKm * PriceCalc.courierRatePerKm()),
+            status: 'sedang jalan',
+            start_time: now.toISOString(),
+          },
+        ])
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
 
       showToast('Perjalanan dimulai', 'success');
       document.getElementById('courier-form').reset();
       delete document.getElementById('courier-distance').dataset.auto;
       document.getElementById('courier-distance-hint').innerHTML = '';
+      if (inserted?.id) this.startTracking(inserted.id);
       this.loadLogs();
       this.loadRouteMemory();
     } catch (e) {
@@ -274,6 +422,7 @@ export const Courier = {
       .eq('id', id);
     if (error) showToast('Gagal menyelesaikan perjalanan', 'error');
     else {
+      if (String(id) === String(this._activeTripId)) this.stopTracking();
       showToast('Perjalanan selesai', 'success');
       this.loadLogs();
     }
@@ -303,7 +452,14 @@ export const Courier = {
       return;
     }
 
-    if (Auth.isAdmin()) this.populateAdminFilter(data);
+    this.syncTrackingWithMyTrip(data);
+
+    if (Auth.isAdmin()) {
+      this.populateAdminFilter(data);
+      if (!this._map) this.initMap();
+      else this._map.invalidateSize();
+      this.renderMapMarkers(data);
+    }
 
     if (!data.length) {
       tbody.innerHTML = `<tr><td colspan="${COL_COUNT}" class="cell-empty">Belum ada log perjalanan bulan ini</td></tr>`;

@@ -208,8 +208,10 @@ export const Auth = {
     if (this.isAdmin()) {
       const fw = document.getElementById('admin-courier-filter-wrapper');
       const ca = document.getElementById('admin-courier-actions');
+      const map = document.getElementById('courier-map-card');
       if (fw) fw.hidden = false;
       if (ca) ca.hidden = false;
+      if (map) map.hidden = false;
     }
 
     // Sales-role gets the cost-column toggle button; PriceList owns its state.
