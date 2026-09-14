@@ -21,6 +21,9 @@ const COL_COUNT = 10;
 export const Courier = {
   _timerInterval: null,
   _wired: false,
+  _routeMap: new Map(), // normalized "locA__locB" -> { km, count }
+  _locations: [],
+  _routesLoaded: false,
 
   init() {
     if (this._wired) return;
@@ -33,6 +36,26 @@ export const Courier = {
     document.getElementById('edit-courier-form').addEventListener('submit', (e) => {
       e.preventDefault();
       this.saveEditLog();
+    });
+
+    // Route memory: suggest a known distance once "from" + "to" match a past
+    // trip, so a courier doesn't have to remember/re-type the same KM every
+    // time. Wired for both the start-trip form and the admin edit modal.
+    ['courier', 'edit-courier'].forEach((prefix) => {
+      const fromEl = document.getElementById(`${prefix}-from`);
+      const toEl = document.getElementById(`${prefix}-to`);
+      const distEl = document.getElementById(`${prefix}-distance`);
+      fromEl?.addEventListener('input', () => this.suggestDistance(prefix));
+      toEl?.addEventListener('input', () => this.suggestDistance(prefix));
+      // Once the courier types their own number, stop treating it as an
+      // auto-filled value that a later from/to edit is free to overwrite.
+      distEl?.addEventListener('input', () => delete distEl.dataset.auto);
+    });
+    document.getElementById('courier-form').addEventListener('click', (e) => {
+      if (e.target.closest('[data-use-suggested]')) this.applySuggestedDistance('courier');
+    });
+    document.getElementById('edit-courier-form').addEventListener('click', (e) => {
+      if (e.target.closest('[data-use-suggested]')) this.applySuggestedDistance('edit-courier');
     });
 
     // Static header actions (admin).
@@ -68,6 +91,123 @@ export const Courier = {
       const diff = now - new Date(el.dataset.start).getTime();
       if (diff >= 0) el.textContent = formatDuration(diff);
     });
+  },
+
+  // ---- route memory: reuse past trips instead of retyping the KM ---------
+  // Builds an in-memory map straight from the courier's own history (RLS
+  // already scopes courier_logs to their rows, or all of them for admin) —
+  // no new table, no external maps API, just what's already recorded.
+
+  normLoc(s) {
+    return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  },
+
+  routeKey(a, b) {
+    return [this.normLoc(a), this.normLoc(b)].sort().join('__');
+  },
+
+  async loadRouteMemory() {
+    const { data, error } = await supabaseClient
+      .from('courier_logs')
+      .select('from_location, to_location, distance_km, date')
+      .order('date', { ascending: false })
+      .limit(1000);
+    if (error || !data) return;
+
+    const freq = new Map(); // routeKey -> Map(distance -> occurrences)
+    const locs = new Map(); // normalized -> nicest original casing seen
+
+    for (const r of data) {
+      const from = r.from_location;
+      const to = r.to_location;
+      const km = Number(r.distance_km);
+      if (!from || !to || !isFinite(km) || km <= 0) continue;
+
+      const key = this.routeKey(from, to);
+      if (!freq.has(key)) freq.set(key, new Map());
+      const m = freq.get(key);
+      m.set(km, (m.get(km) || 0) + 1);
+
+      for (const loc of [from, to]) {
+        const n = this.normLoc(loc);
+        if (n && !locs.has(n)) locs.set(n, loc.trim());
+      }
+    }
+
+    this._routeMap = new Map();
+    for (const [key, m] of freq) {
+      let bestKm = null;
+      let bestCount = 0;
+      let total = 0;
+      for (const [km, count] of m) {
+        total += count;
+        if (count > bestCount) {
+          bestKm = km;
+          bestCount = count;
+        }
+      }
+      this._routeMap.set(key, { km: bestKm, count: total });
+    }
+    this._locations = [...locs.values()].sort((a, b) => a.localeCompare(b, 'id'));
+    this._routesLoaded = true;
+    this.renderLocationDatalist();
+  },
+
+  renderLocationDatalist() {
+    const dl = document.getElementById('courier-location-list');
+    if (!dl) return;
+    dl.innerHTML = this._locations.map((l) => `<option value="${escapeHtml(l)}">`).join('');
+  },
+
+  // Formats a plain number the way the KM inputs expect it back
+  // (parseDecimalId reads "," as the decimal separator, "." as a thousands one).
+  formatKmInput(n) {
+    return String(n).replace('.', ',');
+  },
+
+  suggestDistance(prefix) {
+    const fromEl = document.getElementById(`${prefix}-from`);
+    const toEl = document.getElementById(`${prefix}-to`);
+    const distEl = document.getElementById(`${prefix}-distance`);
+    const hintEl = document.getElementById(`${prefix}-distance-hint`);
+    if (!fromEl || !toEl || !distEl || !hintEl) return;
+
+    const from = fromEl.value.trim();
+    const to = toEl.value.trim();
+    if (!from || !to) {
+      hintEl.innerHTML = '';
+      return;
+    }
+
+    const known = this._routeMap.get(this.routeKey(from, to));
+    if (!known) {
+      hintEl.innerHTML = '';
+      return;
+    }
+
+    const kmText = this.formatKmInput(known.km);
+    const isEmpty = !distEl.value.trim();
+    const isStaleAuto = distEl.dataset.auto === '1' && parseDecimalId(distEl.value) !== known.km;
+
+    if (isEmpty || isStaleAuto) {
+      distEl.value = kmText;
+      distEl.dataset.auto = '1';
+      hintEl.innerHTML = `<span class="hint-ok">✓ ${kmText} KM otomatis terisi dari riwayat (rute ini sudah dipakai ${known.count}×)</span>`;
+    } else {
+      hintEl.innerHTML = `<span class="hint-info">Riwayat rute ini: <strong>${kmText} KM</strong> (dipakai ${known.count}×) ·
+        <button type="button" class="route-hint-link" data-use-suggested="1">pakai angka ini</button></span>`;
+    }
+  },
+
+  applySuggestedDistance(prefix) {
+    const fromEl = document.getElementById(`${prefix}-from`);
+    const toEl = document.getElementById(`${prefix}-to`);
+    const distEl = document.getElementById(`${prefix}-distance`);
+    const known = this._routeMap.get(this.routeKey(fromEl.value.trim(), toEl.value.trim()));
+    if (!known) return;
+    distEl.value = this.formatKmInput(known.km);
+    distEl.dataset.auto = '1';
+    this.suggestDistance(prefix);
   },
 
   async saveLog() {
@@ -112,7 +252,10 @@ export const Courier = {
 
       showToast('Perjalanan dimulai', 'success');
       document.getElementById('courier-form').reset();
+      delete document.getElementById('courier-distance').dataset.auto;
+      document.getElementById('courier-distance-hint').innerHTML = '';
       this.loadLogs();
+      this.loadRouteMemory();
     } catch (e) {
       console.error('saveLog:', e);
       showToast('Gagal memulai perjalanan: ' + (e.message || e), 'error');
@@ -140,6 +283,8 @@ export const Courier = {
     const tbody = document.getElementById('courier-table-body');
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="${COL_COUNT}" class="cell-empty"><span class="spinner"></span> Memuat…</td></tr>`;
+
+    if (!this._routesLoaded) this.loadRouteMemory();
 
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -274,7 +419,10 @@ export const Courier = {
     document.getElementById('edit-courier-id').value = data.id;
     document.getElementById('edit-courier-from').value = data.from_location;
     document.getElementById('edit-courier-to').value = data.to_location;
-    document.getElementById('edit-courier-distance').value = data.distance_km;
+    const distEl = document.getElementById('edit-courier-distance');
+    distEl.value = this.formatKmInput(data.distance_km);
+    delete distEl.dataset.auto; // this is the real saved value, not a suggestion
+    document.getElementById('edit-courier-distance-hint').innerHTML = '';
     document.getElementById('edit-courier-modal').classList.add('show');
   },
 
@@ -442,6 +590,7 @@ export const Courier = {
         }
         showToast(`Berhasil import ${logs.length} data`, 'success');
         this.loadLogs();
+        this.loadRouteMemory();
       } catch (err) {
         console.error('importExcel:', err);
         showToast('Gagal import: ' + err.message, 'error');
