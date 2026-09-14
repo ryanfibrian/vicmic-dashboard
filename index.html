@@ -19,7 +19,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=110">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css?v=111">
 </head>
 
 <body>
@@ -366,6 +367,17 @@
                     </div>
                 </div>
 
+                <div class="card mt-2" id="courier-map-card" hidden>
+                    <div class="card-header card-header-row">
+                        <h2>📍 Peta Kurir Live</h2>
+                        <span class="muted-count" id="courier-map-status"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="courier-map" class="courier-map"></div>
+                        <p class="text-muted courier-map-hint">Titik hanya muncul untuk kurir yang berstatus "Sedang Jalan" dan mengizinkan akses lokasi di perangkatnya. Posisi diperbarui otomatis tiap ±15 detik.</p>
+                    </div>
+                </div>
+
                 <div class="card mt-2">
                     <div class="card-header card-header-row">
                         <h2>📋 Riwayat Perjalanan (Bulan Ini)</h2>
@@ -445,8 +457,9 @@
     <!-- ===== SCRIPTS ===== -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script type="module" src="js/main.js?v=110"></script>
+    <script type="module" src="js/main.js?v=111"></script>
 </body>
 
 </html>

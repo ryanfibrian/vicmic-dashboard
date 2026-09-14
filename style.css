@@ -693,6 +693,19 @@ body:not(.role-sales-kurir) .courier-grid { grid-template-columns: 1fr; }
 .courier-table td { white-space: nowrap; }
 .table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
+.courier-map { position: relative; z-index: 0; height: 360px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-tint); }
+.courier-map-hint { margin-top: var(--space-2); font-size: 0.78rem; }
+.courier-map-pin { display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translateY(-4px); }
+.courier-map-pin .pin-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--accent), var(--shadow-sm);
+}
+.courier-map-pin .pin-label {
+  font-size: 0.68rem; font-weight: 700; color: var(--accent-strong);
+  background: #fff; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border-color);
+  white-space: nowrap; box-shadow: var(--shadow-sm);
+}
+
 /* ---- 16. Modal --------------------------------- */
 .modal-overlay {
   display: none;
