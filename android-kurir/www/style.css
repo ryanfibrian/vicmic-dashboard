@@ -140,7 +140,21 @@ html, body {
 
 /* ---- full-screen map picker (Gojek-style: pin fixed at center, drag map
    underneath, reverse-geocode on release) ------------------------------- */
-#view-mappicker { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+#view-mappicker {
+  /* position:fixed + inset:0 pins this to the actual visible viewport.
+     height:100vh on Android WebView can be taller than what's on screen
+     (it doesn't reliably account for the system status/nav bars), which is
+     what made this need scrolling to reach the bottom button. min-height
+     must be cleared too — .view's min-height:100vh would otherwise still
+     force the same overflow even with inset:0 set. */
+  position: fixed;
+  inset: 0;
+  min-height: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+}
 .mp-search-wrap {
   position: relative;
   padding: 10px 16px;
@@ -173,18 +187,39 @@ html, body {
 .mp-search-result { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 0.85rem; cursor: pointer; }
 .mp-search-result:last-child { border-bottom: none; }
 .mp-search-result:active { background: var(--bg-app); }
+.mp-search-result.muted { cursor: default; }
+.mp-search-result.muted:active { background: transparent; }
 .mp-map-wrap { position: relative; flex: 1; min-height: 0; }
 .mp-map { position: absolute; inset: 0; }
 .mp-center-pin {
+  /* A CSS-drawn marker, not an emoji glyph — some Android WebView/device
+     combos don't render color emoji reliably, which was silently dropping
+     the 📍 with nothing visible in its place. translate(-50%,-100%) lines
+     the bottom tip of the stick up with the exact map-center coordinate. */
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -100%);
-  font-size: 2.1rem;
-  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   pointer-events: none;
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
   z-index: 10;
+}
+.mp-center-pin .pin-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.mp-center-pin .pin-stick {
+  width: 3px;
+  height: 12px;
+  background: var(--danger);
+  margin-top: -2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 .mp-bottom {
   padding: 14px 16px calc(14px + var(--safe-bottom));

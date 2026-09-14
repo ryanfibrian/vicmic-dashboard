@@ -48,6 +48,7 @@ const state = {
   picker: { target: null, map: null, center: null, address: '', searchResults: [] },
   favTarget: null,
   favorites: [],
+  favError: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -495,8 +496,11 @@ async function reverseGeocodeCenter() {
   state.picker.center = { lat: c.lat, lng: c.lng };
   setPickerAddress('Mencari alamat…');
   try {
-    const url = `${PHOTON_REVERSE}?lon=${c.lng}&lat=${c.lat}&lang=id`;
+    // Photon's public instance only supports lang=default/de/en/fr — "id" is
+    // rejected with a 400, so leave it unset (it still returns local names).
+    const url = `${PHOTON_REVERSE}?lon=${c.lng}&lat=${c.lat}`;
     const res = await fetch(url);
+    if (!res.ok) throw new Error(`Photon reverse ${res.status}`);
     const json = await res.json();
     const label = formatPhotonFeature(json.features?.[0]) || `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
     setPickerAddress(label);
@@ -523,21 +527,30 @@ function onSearchInput(e) {
 }
 
 async function runSearch(q) {
+  const el = $('mp-search-results');
+  el.innerHTML = '<div class="mp-search-result muted">Mencari…</div>';
+  el.hidden = false;
   try {
-    const url = `${PHOTON_SEARCH}?q=${encodeURIComponent(q)}&limit=6&lang=id`;
+    const url = `${PHOTON_SEARCH}?q=${encodeURIComponent(q)}&limit=6`;
     const res = await fetch(url);
+    if (!res.ok) throw new Error(`Photon search ${res.status}`);
     const json = await res.json();
     state.picker.searchResults = json.features || [];
     renderSearchResults();
   } catch (e) {
     console.warn('runSearch:', e);
+    el.innerHTML = '<div class="mp-search-result muted">Gagal mencari — coba lagi.</div>';
   }
 }
 
 function renderSearchResults() {
   const el = $('mp-search-results');
   const results = state.picker.searchResults || [];
-  if (!results.length) return hideSearchResults();
+  if (!results.length) {
+    el.innerHTML = '<div class="mp-search-result muted">Tidak ditemukan.</div>';
+    el.hidden = false;
+    return;
+  }
   el.innerHTML = results
     .map((f, i) => `<div class="mp-search-result" data-idx="${i}">${escapeHtml(formatPhotonFeature(f) || 'Lokasi')}</div>`)
     .join('');
@@ -560,6 +573,7 @@ function selectSearchResult(feature) {
 
 async function openFavorites(target) {
   state.favTarget = target;
+  state.favError = null;
   $('fav-modal').hidden = false;
   $('btn-fav-save-current').hidden = !state.points[target];
   $('fav-list').innerHTML = '<p class="fav-empty">Memuat…</p>';
@@ -581,17 +595,31 @@ async function loadFavorites() {
   if (error) {
     console.warn('loadFavorites:', error.message);
     state.favorites = [];
+    state.favError = error.message;
     return;
   }
+  state.favError = null;
   state.favorites = data || [];
 }
 
 function renderFavorites() {
   const el = $('fav-list');
-  if (!state.favorites.length) {
-    el.innerHTML = '<p class="fav-empty">Belum ada alamat favorit.</p>';
+
+  if (state.favError) {
+    el.innerHTML = `<p class="fav-empty">Gagal memuat: ${escapeHtml(state.favError)}</p>`;
     return;
   }
+
+  if (!state.favorites.length) {
+    // Explain *why* the save button below might not be visible either —
+    // without this, an empty sheet with no save button looks broken rather
+    // than "pick a location first".
+    el.innerHTML = state.points[state.favTarget]
+      ? '<p class="fav-empty">Belum ada alamat favorit. Simpan lokasi yang sudah dipilih lewat tombol di bawah.</p>'
+      : '<p class="fav-empty">Belum ada alamat favorit.<br>Pilih lokasi dulu lewat 🗺️, baru bisa disimpan ke sini.</p>';
+    return;
+  }
+
   el.innerHTML = state.favorites
     .map(
       (f) => `
