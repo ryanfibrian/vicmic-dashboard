@@ -35,6 +35,10 @@ Kolom GPS (`last_lat`, `last_lng`, `last_ping_at`) di `courier_logs` juga harus 
 Tabel alamat favorit juga perlu dibuat — jalankan `migrations/007_courier_favorites.sql`
 sebelum memakai tombol ⭐ di app.
 
+Untuk fitur "Lihat Rute" di dashboard admin (jejak GPS per perjalanan), jalankan juga
+`migrations/008_courier_track.sql` — tanpa ini, posisi tetap terkirim untuk peta live,
+tapi jejaknya tidak tersimpan untuk dilihat lagi setelah perjalanan selesai.
+
 ## 2. Build APK (tanpa Android Studio — pakai GitHub Actions, gratis)
 
 1. Push perubahan apa pun di folder `android-kurir/` (atau trigger manual: tab **Actions**

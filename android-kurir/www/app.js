@@ -428,6 +428,14 @@ async function pingPosition(tripId, location) {
     })
     .eq('id', tripId);
   if (error) console.warn('pingPosition:', error.message);
+
+  // Breadcrumb trail for the admin "Lihat Rute" button (migration 008) — a
+  // full history of points, unlike last_lat/last_lng above which only ever
+  // holds the latest one.
+  const { error: trackErr } = await supabase
+    .from('courier_positions')
+    .insert({ trip_id: tripId, user_email: state.user.email, lat: location.latitude, lng: location.longitude });
+  if (trackErr) console.warn('pingPosition (track):', trackErr.message);
 }
 
 // ---- legs + distance readout ---------------------------------------------
