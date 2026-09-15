@@ -18,15 +18,21 @@ import { showToast, confirmModal, showModal, hideModal, BTN_SPINNER } from '../u
 
 const COL_COUNT = 10;
 
+// MapLibre GL + OpenFreeMap vector tiles (free, keyless) — a modern
+// Grab/Gojek-style basemap, replacing the earlier raw OSM raster tiles.
+// Coordinates for every map on this page are [lng, lat] (GeoJSON/MapLibre
+// order), not Leaflet's [lat, lng].
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const MAP_ATTRIBUTION = '© OpenStreetMap contributors, © OpenFreeMap';
+
 // A CSS-drawn teardrop marker (no image asset) for a route's start/end
 // points, reused by the "Lihat Rute" map. `color` picks green vs red.
-function dropPinIcon(color) {
-  return L.divIcon({
-    className: 'drop-pin',
-    html: `<span class="drop-pin-head" style="--pin-color:${color}"></span>`,
-    iconSize: [24, 32],
-    iconAnchor: [12, 32],
-  });
+// MapLibre's Marker takes a real DOM element, not an icon descriptor.
+function dropPinEl(color) {
+  const el = document.createElement('div');
+  el.className = 'drop-pin-head';
+  el.style.setProperty('--pin-color', color);
+  return el;
 }
 
 export const Courier = {
@@ -187,14 +193,17 @@ export const Courier = {
   // ---- admin: live map of couriers currently "sedang jalan" -------------
 
   initMap() {
-    if (this._map || !window.L) return;
+    if (this._map || !window.maplibregl) return;
     const el = document.getElementById('courier-map');
     if (!el) return;
-    this._map = L.map(el, { scrollWheelZoom: false }).setView([-6.25, 106.7], 11); // Jabodetabek default
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(this._map);
+    this._map = new maplibregl.Map({
+      container: el,
+      style: MAP_STYLE,
+      center: [106.7, -6.25], // [lng, lat] — Jabodetabek default
+      zoom: 11,
+      attributionControl: { compact: true, customAttribution: MAP_ATTRIBUTION },
+    });
+    this._map.scrollZoom.disable();
   },
 
   async refreshMapIfVisible() {
@@ -211,7 +220,7 @@ export const Courier = {
   },
 
   renderMapMarkers(rows) {
-    if (!this._map || !window.L) return;
+    if (!this._map || !window.maplibregl) return;
     const active = rows.filter((r) => r.status === 'sedang jalan' && r.last_lat != null && r.last_lng != null);
 
     const seen = new Set();
@@ -221,15 +230,12 @@ export const Courier = {
       const label = escapeHtml((r.user_email || '').split('@')[0]);
       let marker = this._mapMarkers.get(id);
       if (marker) {
-        marker.setLatLng([r.last_lat, r.last_lng]);
+        marker.setLngLat([r.last_lng, r.last_lat]);
       } else {
-        const icon = L.divIcon({
-          className: 'courier-map-pin',
-          html: `<span class="pin-dot"></span><span class="pin-label">${label}</span>`,
-          iconSize: [0, 0],
-          iconAnchor: [8, 8],
-        });
-        marker = L.marker([r.last_lat, r.last_lng], { icon }).addTo(this._map);
+        const el = document.createElement('div');
+        el.className = 'courier-map-pin';
+        el.innerHTML = `<span class="pin-dot"></span><span class="pin-label">${label}</span>`;
+        marker = new maplibregl.Marker({ element: el, anchor: 'top' }).setLngLat([r.last_lng, r.last_lat]).addTo(this._map);
         this._mapMarkers.set(id, marker);
       }
     }
@@ -246,10 +252,11 @@ export const Courier = {
     }
 
     if (active.length && !this._hadMapMarkers) {
-      this._map.fitBounds(
-        L.latLngBounds(active.map((r) => [r.last_lat, r.last_lng])),
-        { padding: [40, 40], maxZoom: 15 }
+      const bounds = active.reduce(
+        (b, r) => b.extend([r.last_lng, r.last_lat]),
+        new maplibregl.LngLatBounds([active[0].last_lng, active[0].last_lat], [active[0].last_lng, active[0].last_lat])
       );
+      this._map.fitBounds(bounds, { padding: 40, maxZoom: 15 });
     }
     this._hadMapMarkers = active.length > 0;
   },
@@ -277,21 +284,40 @@ export const Courier = {
 
     setTimeout(() => {
       const el = document.getElementById('track-map');
-      if (!el || !window.L) return;
-      const latlngs = data.map((p) => [p.lat, p.lng]);
+      if (!el || !window.maplibregl) return;
+      const coords = data.map((p) => [p.lng, p.lat]); // MapLibre: [lng, lat]
 
-      const map = L.map(el).setView(latlngs[0], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap',
-      }).addTo(map);
+      const map = new maplibregl.Map({
+        container: el,
+        style: MAP_STYLE,
+        center: coords[0],
+        zoom: 14,
+        attributionControl: { compact: true, customAttribution: MAP_ATTRIBUTION },
+      });
 
-      const line = L.polyline(latlngs, { color: '#16a34a', weight: 5, opacity: 0.9, lineJoin: 'round' }).addTo(map);
-      L.marker(latlngs[0], { icon: dropPinIcon('#16a34a') }).addTo(map);
-      L.marker(latlngs[latlngs.length - 1], { icon: dropPinIcon('#dc2626') }).addTo(map);
+      // A GeoJSON source/layer (needed for the line) can't be added until
+      // the style has finished loading — markers have no such restriction,
+      // but are kept in here too so everything appears together.
+      map.on('load', () => {
+        map.addSource('track-line', {
+          type: 'geojson',
+          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } },
+        });
+        map.addLayer({
+          id: 'track-line-layer',
+          type: 'line',
+          source: 'track-line',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#16a34a', 'line-width': 5, 'line-opacity': 0.9 },
+        });
 
-      map.fitBounds(line.getBounds(), { padding: [30, 30] });
-      setTimeout(() => map.invalidateSize(), 50);
+        new maplibregl.Marker({ element: dropPinEl('#16a34a'), anchor: 'bottom' }).setLngLat(coords[0]).addTo(map);
+        new maplibregl.Marker({ element: dropPinEl('#dc2626'), anchor: 'bottom' }).setLngLat(coords[coords.length - 1]).addTo(map);
+
+        const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+        map.fitBounds(bounds, { padding: 30, duration: 0 });
+        setTimeout(() => map.resize(), 50);
+      });
     }, 50);
   },
 
@@ -516,7 +542,7 @@ export const Courier = {
     if (Auth.isAdmin()) {
       this.populateAdminFilter(data);
       if (!this._map) this.initMap();
-      else this._map.invalidateSize();
+      else this._map.resize();
       this.renderMapMarkers(data);
     }
 
