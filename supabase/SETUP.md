@@ -56,6 +56,7 @@ Buka **SQL Editor**, jalankan isi file berikut satu per satu, sesuai urutan:
 | 6 | `migrations/006_courier_position.sql` | Tambah kolom `last_lat`, `last_lng`, `last_ping_at` di `courier_logs` untuk live tracking GPS kurir |
 | 7 | `migrations/007_courier_favorites.sql` | *(kalau pakai app Android Kurir)* Tabel `courier_favorite_addresses` — alamat favorit kurir |
 | 8 | `migrations/008_courier_track.sql` | Tabel `courier_positions` — jejak GPS per perjalanan, dipakai tombol "Lihat Rute" di tabel Riwayat Perjalanan |
+| 9 | `migrations/009_fix_courier_positions_trip_id.sql` | **Wajib kalau migration 8 sudah dijalankan** — perbaiki tipe kolom `trip_id` (salah diasumsikan `bigint`, ternyata `courier_logs.id` itu UUID) |
 
 Kalau migration 5 dijalankan, aktifkan dulu extension **pg_cron** di
 **Database → Extensions**.
