@@ -11,13 +11,21 @@
 //
 // Free/keyless services behind the location features — all wrapped so a
 // failure degrades to "type it in manually" instead of blocking the trip:
-//   - Leaflet + Esri World Street Map basemap tiles: the maps.
+//   - MapLibre GL + OpenFreeMap vector tiles: the maps. (Went through OSM
+//     raster tiles, then CARTO — which turned out to require a key, see
+//     history — before landing here for a modern, Grab/Gojek-style look.)
 //   - Photon (photon.komoot.io): place search + reverse geocoding.
 //     NOTE: its public instance only accepts lang=default/de/en/fr — passing
 //     lang=id returns HTTP 400 with a JSON body, which silently looks like
 //     "no results" if you don't check res.ok.
 //   - OSRM (router.project-osrm.org): driving distance, duration, and the
-//     route geometry drawn on the preview map.
+//     route geometry drawn on the preview map. Checked whether it offers a
+//     motorcycle/cycling-aware profile — it doesn't: driving/cycling/foot
+//     all returned identical distance+duration for the same route on the
+//     public server, i.e. one car-only graph regardless of profile name.
+//
+// MapLibre note: unlike Leaflet, every coordinate pair here is [lng, lat]
+// (GeoJSON order), not [lat, lng] — easy to get backwards when porting code.
 // ============================================================================
 
 const { App, Browser, BackgroundGeolocation } = window.Capacitor?.Plugins || {};
@@ -26,14 +34,9 @@ const CFG = window.VICMIC_CONFIG;
 const PHOTON_SEARCH = 'https://photon.komoot.io/api/';
 const PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
 const OSRM_ROUTE = 'https://router.project-osrm.org/route/v1/driving/';
-// CARTO's basemaps (previously used here) now require an API key — every
-// tile silently came back as a 200 OK image whose actual pixels just say
-// "API KEY REQUIRED", which a status-code check alone doesn't catch. Esri's
-// World Street Map tile service is genuinely keyless and was verified by
-// downloading and looking at an actual tile before switching to it.
-const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
-const TILE_ATTR = 'Tiles &copy; Esri — Source: Esri, HERE, Garmin, FAO, NOAA, USGS';
-const DEFAULT_CENTER = [-6.25, 106.7]; // Jabodetabek, until a real point exists
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const MAP_ATTRIBUTION = '© OpenStreetMap contributors, © OpenFreeMap';
+const DEFAULT_CENTER = [106.7, -6.25]; // [lng, lat] — Jabodetabek, until a real point exists
 
 const supabase = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
   auth: {
@@ -58,7 +61,8 @@ const state = {
 
   picker: { target: null, map: null, center: null, address: '', searchResults: [] },
   previewMap: null,
-  previewLayer: null,
+  previewMapReady: false,
+  previewMarkers: [],
   favorites: [],
   favError: null,
 };
@@ -103,20 +107,24 @@ function setHint(msg, warn = false) {
 }
 
 function newMap(elId, opts = {}) {
-  const map = L.map(elId, { zoomControl: false, attributionControl: true, ...opts }).setView(DEFAULT_CENTER, 12);
-  L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTR }).addTo(map);
-  return map;
+  return new maplibregl.Map({
+    container: elId,
+    style: MAP_STYLE,
+    center: DEFAULT_CENTER,
+    zoom: 12,
+    attributionControl: { compact: true, customAttribution: MAP_ATTRIBUTION },
+    ...opts,
+  });
 }
 
 // A CSS-drawn teardrop marker (no image asset) for a route's start/end
 // points — matches the shape of the centre pin in the location picker.
-function dropPinIcon(color) {
-  return L.divIcon({
-    className: 'drop-pin',
-    html: `<span class="drop-pin-head" style="--pin-color:${color}"></span>`,
-    iconSize: [24, 32],
-    iconAnchor: [12, 32],
-  });
+// MapLibre's Marker takes a real DOM element, not an icon descriptor.
+function dropPinEl(color) {
+  const el = document.createElement('div');
+  el.className = 'drop-pin-head';
+  el.style.setProperty('--pin-color', color);
+  return el;
 }
 
 // ---- view switching ---------------------------------------------------
@@ -504,34 +512,53 @@ async function recalcRoute() {
 
 function drawRoutePreview() {
   if (!state.route?.geometry) return;
-  const wrap = $('route-preview');
-  wrap.hidden = false;
+  $('route-preview').hidden = false;
 
   if (!state.previewMap) {
-    state.previewMap = newMap('route-map', {
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false,
-      boxZoom: false,
-      keyboard: false,
+    // A source/layer can't be added until the style has finished loading —
+    // 'load' fires once. renderRouteOnPreviewMap() reads state.route fresh
+    // when it runs, so a route picked before 'load' fires still ends up
+    // drawn correctly with no separate "pending" bookkeeping needed.
+    state.previewMap = newMap('route-map', { interactive: false });
+    state.previewMap.on('load', () => {
+      state.previewMap.addSource('route-line', {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } },
+      });
+      state.previewMap.addLayer({
+        id: 'route-line-layer',
+        type: 'line',
+        source: 'route-line',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#16a34a', 'line-width': 5, 'line-opacity': 0.9 },
+      });
+      state.previewMapReady = true;
+      renderRouteOnPreviewMap();
     });
+  } else if (state.previewMapReady) {
+    renderRouteOnPreviewMap();
   }
-  const map = state.previewMap;
-  setTimeout(() => map.invalidateSize(), 50);
-
-  if (state.previewLayer) state.previewLayer.remove();
-
-  const latlngs = state.route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-  const line = L.polyline(latlngs, { color: '#16a34a', weight: 5, opacity: 0.9, lineJoin: 'round' });
-  const start = L.marker(latlngs[0], { icon: dropPinIcon('#16a34a') });
-  const end = L.marker(latlngs[latlngs.length - 1], { icon: dropPinIcon('#dc2626') });
-
-  state.previewLayer = L.layerGroup([line, start, end]).addTo(map);
-  setTimeout(() => map.fitBounds(line.getBounds(), { padding: [26, 26] }), 60);
 
   $('route-km').textContent = `${formatKm(state.route.km)} KM`;
   $('route-eta').textContent = `± ${state.route.minutes} menit`;
+}
+
+function renderRouteOnPreviewMap() {
+  const map = state.previewMap;
+  if (!map || !state.route?.geometry) return;
+  const coords = state.route.geometry.coordinates; // OSRM GeoJSON: already [lng, lat]
+
+  map.getSource('route-line').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+
+  (state.previewMarkers || []).forEach((m) => m.remove());
+  state.previewMarkers = [
+    new maplibregl.Marker({ element: dropPinEl('#16a34a'), anchor: 'bottom' }).setLngLat(coords[0]).addTo(map),
+    new maplibregl.Marker({ element: dropPinEl('#dc2626'), anchor: 'bottom' }).setLngLat(coords[coords.length - 1]).addTo(map),
+  ];
+
+  const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+  map.fitBounds(bounds, { padding: 28, duration: 0 });
+  setTimeout(() => map.resize(), 50);
 }
 
 function toggleManualKm() {
@@ -551,7 +578,7 @@ function onManualKmInput() {
 
 function ensurePickerMap() {
   if (state.picker.map) return;
-  state.picker.map = newMap('mappicker-map');
+  state.picker.map = newMap('mappicker-map', { zoom: 12 });
   state.picker.map.on('moveend', () => reverseGeocodeCenter());
 }
 
@@ -564,13 +591,13 @@ function openMapPicker(target) {
   renderFavChips();
 
   ensurePickerMap();
-  setTimeout(() => state.picker.map.invalidateSize(), 60);
+  setTimeout(() => state.picker.map.resize(), 60);
 
   const existing = state.points[target];
   if (existing) {
     state.picker.center = { lat: existing.lat, lng: existing.lng };
     setPickerAddress(existing.label);
-    state.picker.map.setView([existing.lat, existing.lng], 16);
+    state.picker.map.jumpTo({ center: [existing.lng, existing.lat], zoom: 16 });
   } else if (target === 'from') {
     locateMe(); // origin defaults to where the courier is standing
   } else {
@@ -601,7 +628,7 @@ function locateMe() {
   if (!navigator.geolocation) return reverseGeocodeCenter();
   setPickerAddress('Mencari lokasi Anda…');
   navigator.geolocation.getCurrentPosition(
-    (pos) => state.picker.map.setView([pos.coords.latitude, pos.coords.longitude], 16),
+    (pos) => state.picker.map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16 }),
     () => reverseGeocodeCenter(),
     { timeout: 8000, enableHighAccuracy: true }
   );
@@ -681,7 +708,7 @@ function selectSearchResult(feature) {
   $('mp-search').value = '';
   $('mp-search').blur();
   const [lng, lat] = feature.geometry.coordinates;
-  state.picker.map.setView([lat, lng], 17); // moveend triggers reverse geocoding
+  state.picker.map.flyTo({ center: [lng, lat], zoom: 17 }); // moveend triggers reverse geocoding
 }
 
 // ---- favorites (saved places, shown as chips inside the picker) ----------
@@ -728,7 +755,7 @@ function useFavorite(id) {
   if (!fav || !state.picker.map) return;
   setPickerAddress(fav.address);
   state.picker.center = { lat: fav.lat, lng: fav.lng };
-  state.picker.map.setView([fav.lat, fav.lng], 17);
+  state.picker.map.flyTo({ center: [fav.lng, fav.lat], zoom: 17 });
 }
 
 async function saveFavorite() {

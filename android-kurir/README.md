@@ -112,8 +112,11 @@ tempuh (KM) dihitung otomatis lewat rute jalan sungguhan (bukan garis lurus) dan
 field Jarak — tetap bisa diedit manual kalau perlu.
 
 Tiga layanan gratis/open-source di balik ini (tanpa API key, tanpa billing):
-**Leaflet + OpenStreetMap** (peta), **Photon** (cari tempat & reverse geocoding),
-**OSRM** (hitung jarak rute). Ini server demo publik, bukan layanan berbayar bergaransi
+**MapLibre GL + OpenFreeMap** (peta vector, gaya Grab/Gojek — sebelumnya Leaflet + tile
+raster OSM/Esri, diganti karena hasilnya kurang modern), **Photon** (cari tempat & reverse
+geocoding), **OSRM** (hitung jarak rute — cek sendiri: server publiknya tidak punya profil
+motor terpisah, `driving`/`cycling`/`foot` semua kasih hasil identik, jadi KM yang tampil
+itu estimasi rute mobil, bukan motor). Ini server demo publik, bukan layanan berbayar bergaransi
 uptime — kalau lagi lambat/gangguan, semua bagian ini gagal dengan sopan (pesan "isi
 manual"), tidak memblokir kurir untuk tetap mulai jalan dengan isi manual seperti biasa.
 
