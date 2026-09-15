@@ -11,7 +11,7 @@
 //
 // Free/keyless services behind the location features — all wrapped so a
 // failure degrades to "type it in manually" instead of blocking the trip:
-//   - Leaflet + CARTO Voyager basemap tiles: the maps.
+//   - Leaflet + Esri World Street Map basemap tiles: the maps.
 //   - Photon (photon.komoot.io): place search + reverse geocoding.
 //     NOTE: its public instance only accepts lang=default/de/en/fr — passing
 //     lang=id returns HTTP 400 with a JSON body, which silently looks like
@@ -26,8 +26,13 @@ const CFG = window.VICMIC_CONFIG;
 const PHOTON_SEARCH = 'https://photon.komoot.io/api/';
 const PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
 const OSRM_ROUTE = 'https://router.project-osrm.org/route/v1/driving/';
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const TILE_ATTR = '&copy; OpenStreetMap &copy; CARTO';
+// CARTO's basemaps (previously used here) now require an API key — every
+// tile silently came back as a 200 OK image whose actual pixels just say
+// "API KEY REQUIRED", which a status-code check alone doesn't catch. Esri's
+// World Street Map tile service is genuinely keyless and was verified by
+// downloading and looking at an actual tile before switching to it.
+const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+const TILE_ATTR = 'Tiles &copy; Esri — Source: Esri, HERE, Garmin, FAO, NOAA, USGS';
 const DEFAULT_CENTER = [-6.25, 106.7]; // Jabodetabek, until a real point exists
 
 const supabase = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
@@ -99,9 +104,7 @@ function setHint(msg, warn = false) {
 
 function newMap(elId, opts = {}) {
   const map = L.map(elId, { zoomControl: false, attributionControl: true, ...opts }).setView(DEFAULT_CENTER, 12);
-  // detectRetina swaps in the @2x tiles on high-DPI phone screens — without
-  // it the basemap looks noticeably soft/blurry on a modern device.
-  L.tileLayer(TILE_URL, { maxZoom: 20, detectRetina: true, attribution: TILE_ATTR }).addTo(map);
+  L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTR }).addTo(map);
   return map;
 }
 
@@ -347,34 +350,63 @@ function startWatcher(tripId) {
   if (state.watcherId) return;
   state.lastPingAt = 0;
 
-  BackgroundGeolocation.addWatcher(
-    {
-      backgroundTitle: 'Vicmic Kurir',
-      backgroundMessage: 'Mengirim posisi perjalanan ke admin…',
-      requestPermissions: true,
-      stale: false,
-      distanceFilter: 30,
-    },
-    (location, error) => {
-      if (error) {
-        console.warn('BackgroundGeolocation error:', error.message);
-        return;
+  // addWatcher is a "callback"-style native method (RETURN_CALLBACK), which
+  // is supposed to resolve a Promise<watcherId> — but under
+  // android.useLegacyBridge (needed separately so GPS doesn't stop after
+  // 5 minutes locked, see the plugin's README/issue #89) that promise
+  // wrapping breaks and the call can return a non-promise value instead.
+  // Promise.resolve(...) normalizes either case instead of crashing on
+  // "...then is not a function", which was blocking every trip start.
+  let result;
+  try {
+    result = BackgroundGeolocation.addWatcher(
+      {
+        backgroundTitle: 'Vicmic Kurir',
+        backgroundMessage: 'Mengirim posisi perjalanan ke admin…',
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 30,
+      },
+      (location, error) => {
+        if (error) {
+          console.warn('BackgroundGeolocation error:', error.message);
+          return;
+        }
+        pingPosition(tripId, location);
       }
-      pingPosition(tripId, location);
-    }
-  )
+    );
+  } catch (e) {
+    console.error('addWatcher threw synchronously:', e);
+    showBanner('Gagal mengaktifkan GPS: ' + (e.message || e));
+    return;
+  }
+
+  Promise.resolve(result)
     .then((id) => {
-      state.watcherId = id;
+      // A falsy/non-string id means the bridge didn't hand back a usable
+      // watcher id (the known legacy-bridge quirk above) — GPS pings should
+      // still work since the native side registers the callback
+      // synchronously regardless, but removeWatcher() won't be able to
+      // target this watcher precisely later. See stopWatcher().
+      state.watcherId = typeof id === 'string' && id ? id : true;
     })
     .catch((e) => {
-      console.error('addWatcher:', e);
-      showBanner('Gagal mengaktifkan GPS: ' + (e.message || e));
+      console.warn('addWatcher registration ack failed (tracking may still be running):', e);
+      state.watcherId = true; // best-effort marker so stopWatcher() still tries to clean up
     });
 }
 
 function stopWatcher() {
   if (state.watcherId && BackgroundGeolocation) {
-    BackgroundGeolocation.removeWatcher({ id: state.watcherId }).catch(() => {});
+    const id = typeof state.watcherId === 'string' ? state.watcherId : null;
+    if (id) {
+      Promise.resolve(BackgroundGeolocation.removeWatcher({ id })).catch(() => {});
+    } else {
+      // No real id to target (see startWatcher) — the persistent notification
+      // may keep running until the app is fully closed. Not silently ignored:
+      // surfaced so it's easy to spot during testing rather than discovered later.
+      console.warn('stopWatcher: no watcher id captured — GPS foreground service may keep running until the app is closed.');
+    }
   }
   state.watcherId = null;
   if (state.timerInterval) {
@@ -706,6 +738,70 @@ async function deleteFavorite(id) {
   renderFavChips();
 }
 
+// ---- history & commission recap (this month, this courier's own rows) ----
+
+function formatRupiah(n) {
+  return 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+}
+
+async function openHistory() {
+  $('view-history').hidden = false;
+  $('history-list').innerHTML = '<p class="history-empty">Memuat…</p>';
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  const monthStartKey = startOfMonth.toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('courier_logs')
+    .select('*')
+    .eq('user_email', state.user.email)
+    .gte('date', monthStartKey)
+    .order('start_time', { ascending: false });
+
+  if (error) {
+    $('history-list').innerHTML = `<p class="history-empty">Gagal memuat: ${escapeHtml(error.message)}</p>`;
+    return;
+  }
+  renderHistory(data || []);
+}
+
+function closeHistory() {
+  $('view-history').hidden = true;
+}
+
+function renderHistory(rows) {
+  let totalKm = 0;
+  let totalRp = 0;
+
+  const items = rows
+    .map((r) => {
+      const done = r.status !== 'sedang jalan';
+      if (done) {
+        totalKm += Number(r.distance_km) || 0;
+        totalRp += Number(r.amount_rp) || 0;
+      }
+      const dateStr = r.date ? new Date(r.date).toLocaleDateString('id-ID') : '-';
+      return `
+        <div class="history-item">
+          <div class="history-item-top">
+            <span class="history-date">${escapeHtml(dateStr)}</span>
+            <span class="history-status${done ? '' : ' is-active'}">${done ? 'Selesai' : 'Sedang Jalan'}</span>
+          </div>
+          <div class="history-route">${escapeHtml(r.from_location)} → ${escapeHtml(r.to_location)}</div>
+          <div class="history-meta">
+            <span>${r.distance_km} KM</span>
+            <span class="komisi">${done ? formatRupiah(r.amount_rp) : '—'}</span>
+          </div>
+        </div>`;
+    })
+    .join('');
+
+  $('history-list').innerHTML = items || '<p class="history-empty">Belum ada perjalanan bulan ini.</p>';
+  $('hs-km').textContent = `${formatKm(totalKm)} KM`;
+  $('hs-rp').textContent = formatRupiah(totalRp);
+}
+
 // ---- wiring ---------------------------------------------------------------
 
 function init() {
@@ -713,6 +809,8 @@ function init() {
   $('btn-logout').addEventListener('click', logout);
   $('btn-start').addEventListener('click', startTrip);
   $('btn-finish').addEventListener('click', finishTrip);
+  $('btn-history').addEventListener('click', openHistory);
+  $('btn-history-close').addEventListener('click', closeHistory);
 
   document.querySelectorAll('[data-pick]').forEach((el) =>
     el.addEventListener('click', () => openMapPicker(el.dataset.pick))
@@ -755,6 +853,7 @@ function init() {
   App?.addListener('backButton', () => {
     if (!$('mp-search-results').hidden) return hideSearchResults();
     if (!$('view-mappicker').hidden) return closeMapPicker();
+    if (!$('view-history').hidden) return closeHistory();
     App.exitApp();
   });
 

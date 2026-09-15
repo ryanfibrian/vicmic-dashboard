@@ -25,7 +25,12 @@
         <strong id="user-name">–</strong>
         <span class="muted small" id="user-email">–</span>
       </div>
-      <button id="btn-logout" class="btn btn-ghost btn-sm">Keluar</button>
+      <div class="topbar-actions">
+        <button type="button" id="btn-history" class="icon-btn" aria-label="Riwayat &amp; komisi">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        </button>
+        <button id="btn-logout" class="btn btn-ghost btn-sm">Keluar</button>
+      </div>
     </header>
 
     <main class="content">
@@ -128,6 +133,30 @@
         <button type="button" id="btn-mappicker-confirm" class="btn btn-primary">Gunakan Lokasi Ini</button>
       </div>
     </div>
+  </div>
+
+  <!-- This month's trips + commission total, scoped to this courier's own
+       rows (same as the dashboard's Riwayat/Rekap Komisi, just standalone). -->
+  <div id="view-history" class="view" hidden>
+    <header class="mp-top">
+      <button type="button" id="btn-history-close" class="icon-btn" aria-label="Kembali">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <strong>Riwayat &amp; Komisi</strong>
+    </header>
+
+    <div class="history-summary">
+      <div class="hs-item">
+        <span class="hs-label">Total Jarak</span>
+        <span class="hs-value" id="hs-km">0 KM</span>
+      </div>
+      <div class="hs-item">
+        <span class="hs-label">Total Komisi</span>
+        <span class="hs-value" id="hs-rp">Rp 0</span>
+      </div>
+    </div>
+
+    <div id="history-list" class="history-list"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
