@@ -18,6 +18,17 @@ import { showToast, confirmModal, showModal, hideModal, BTN_SPINNER } from '../u
 
 const COL_COUNT = 10;
 
+// A CSS-drawn teardrop marker (no image asset) for a route's start/end
+// points, reused by the "Lihat Rute" map. `color` picks green vs red.
+function dropPinIcon(color) {
+  return L.divIcon({
+    className: 'drop-pin',
+    html: `<span class="drop-pin-head" style="--pin-color:${color}"></span>`,
+    iconSize: [24, 32],
+    iconAnchor: [12, 32],
+  });
+}
+
 export const Courier = {
   _timerInterval: null,
   _wired: false,
@@ -276,8 +287,8 @@ export const Courier = {
       }).addTo(map);
 
       const line = L.polyline(latlngs, { color: '#16a34a', weight: 5, opacity: 0.9, lineJoin: 'round' }).addTo(map);
-      L.circleMarker(latlngs[0], { radius: 7, color: '#fff', weight: 3, fillColor: '#16a34a', fillOpacity: 1 }).addTo(map);
-      L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#fff', weight: 3, fillColor: '#dc2626', fillOpacity: 1 }).addTo(map);
+      L.marker(latlngs[0], { icon: dropPinIcon('#16a34a') }).addTo(map);
+      L.marker(latlngs[latlngs.length - 1], { icon: dropPinIcon('#dc2626') }).addTo(map);
 
       map.fitBounds(line.getBounds(), { padding: [30, 30] });
       setTimeout(() => map.invalidateSize(), 50);
