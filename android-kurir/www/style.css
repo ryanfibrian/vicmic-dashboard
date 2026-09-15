@@ -382,6 +382,33 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   margin-top: 1px;
 }
 
+/* Teardrop marker for a route's start/end point (route preview map). Classic
+   CSS trick: a square with one sharp corner (bottom-left), rotated -45deg so
+   that corner points straight down — no image asset needed. */
+.drop-pin-head {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 1px;
+  background: var(--pin-color, var(--accent));
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+.drop-pin-head::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  background: #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
 .mp-fab {
   position: absolute;
   right: 14px;

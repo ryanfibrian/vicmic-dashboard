@@ -108,6 +108,17 @@ function newMap(elId, opts = {}) {
   return map;
 }
 
+// A CSS-drawn teardrop marker (no image asset) for a route's start/end
+// points — matches the shape of the centre pin in the location picker.
+function dropPinIcon(color) {
+  return L.divIcon({
+    className: 'drop-pin',
+    html: `<span class="drop-pin-head" style="--pin-color:${color}"></span>`,
+    iconSize: [24, 32],
+    iconAnchor: [12, 32],
+  });
+}
+
 // ---- view switching ---------------------------------------------------
 
 function showLogin() {
@@ -513,8 +524,8 @@ function drawRoutePreview() {
 
   const latlngs = state.route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
   const line = L.polyline(latlngs, { color: '#16a34a', weight: 5, opacity: 0.9, lineJoin: 'round' });
-  const start = L.circleMarker(latlngs[0], { radius: 6, color: '#fff', weight: 3, fillColor: '#16a34a', fillOpacity: 1 });
-  const end = L.circleMarker(latlngs[latlngs.length - 1], { radius: 6, color: '#fff', weight: 3, fillColor: '#dc2626', fillOpacity: 1 });
+  const start = L.marker(latlngs[0], { icon: dropPinIcon('#16a34a') });
+  const end = L.marker(latlngs[latlngs.length - 1], { icon: dropPinIcon('#dc2626') });
 
   state.previewLayer = L.layerGroup([line, start, end]).addTo(map);
   setTimeout(() => map.fitBounds(line.getBounds(), { padding: [26, 26] }), 60);
