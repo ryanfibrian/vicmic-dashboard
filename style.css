@@ -706,6 +706,9 @@ body:not(.role-sales-kurir) .courier-grid { grid-template-columns: 1fr; }
   white-space: nowrap; box-shadow: var(--shadow-sm);
 }
 
+.track-map { position: relative; z-index: 0; height: 320px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
+.track-meta { margin-top: var(--space-2); font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+
 /* ---- 16. Modal --------------------------------- */
 .modal-overlay {
   display: none;
