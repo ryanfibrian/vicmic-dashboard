@@ -14,7 +14,7 @@ import {
   escapeHtml,
   monthKey,
 } from '../utils.js';
-import { showToast, confirmModal, BTN_SPINNER } from '../ui.js';
+import { showToast, confirmModal, showModal, hideModal, BTN_SPINNER } from '../ui.js';
 
 const COL_COUNT = 10;
 
@@ -88,6 +88,7 @@ export const Courier = {
       const id = btn.dataset.id;
       if (btn.dataset.action === 'finish') this.finishLog(id);
       else if (btn.dataset.action === 'edit') this.editLog(id);
+      else if (btn.dataset.action === 'track') this.viewTrack(id);
       else if (btn.dataset.action === 'delete') this.deleteLog(id);
     });
 
@@ -147,15 +148,21 @@ export const Courier = {
     const now = Date.now();
     if (now - this._lastPingAt < 15000) return; // throttle writes to ~1/15s
     this._lastPingAt = now;
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
     const { error } = await supabaseClient
       .from('courier_logs')
-      .update({
-        last_lat: pos.coords.latitude,
-        last_lng: pos.coords.longitude,
-        last_ping_at: new Date().toISOString(),
-      })
+      .update({ last_lat: lat, last_lng: lng, last_ping_at: new Date().toISOString() })
       .eq('id', tripId);
     if (error) console.warn('position ping:', error.message);
+
+    // Breadcrumb trail for the admin "Lihat Rute" button — separate table
+    // (migration 008) from the live-position columns above, since this one
+    // keeps every point instead of just the latest.
+    const { error: trackErr } = await supabaseClient
+      .from('courier_positions')
+      .insert({ trip_id: tripId, user_email: Auth.currentUser.email, lat, lng });
+    if (trackErr) console.warn('position track:', trackErr.message);
   },
 
   // Resumes tracking after a page reload if this user still has a trip
@@ -234,6 +241,47 @@ export const Courier = {
       );
     }
     this._hadMapMarkers = active.length > 0;
+  },
+
+  // Draws the actual GPS breadcrumb trail recorded for one trip (migration
+  // 008, courier_positions) — not a guessed start->end route, the real path.
+  async viewTrack(id) {
+    const { data, error } = await supabaseClient
+      .from('courier_positions')
+      .select('lat, lng, recorded_at')
+      .eq('trip_id', id)
+      .order('recorded_at', { ascending: true });
+
+    if (error) return showToast('Gagal memuat rute: ' + error.message, 'error');
+    if (!data || data.length < 2) {
+      return showToast('Belum ada cukup data GPS untuk rute perjalanan ini.', 'warning');
+    }
+
+    showModal(
+      'Rute Perjalanan',
+      `<div id="track-map" class="track-map"></div>
+       <p class="track-meta">${data.length} titik GPS tercatat</p>`,
+      [{ text: 'Tutup', class: 'btn-secondary', onClick: hideModal }]
+    );
+
+    setTimeout(() => {
+      const el = document.getElementById('track-map');
+      if (!el || !window.L) return;
+      const latlngs = data.map((p) => [p.lat, p.lng]);
+
+      const map = L.map(el).setView(latlngs[0], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+      }).addTo(map);
+
+      const line = L.polyline(latlngs, { color: '#16a34a', weight: 5, opacity: 0.9, lineJoin: 'round' }).addTo(map);
+      L.circleMarker(latlngs[0], { radius: 7, color: '#fff', weight: 3, fillColor: '#16a34a', fillOpacity: 1 }).addTo(map);
+      L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#fff', weight: 3, fillColor: '#dc2626', fillOpacity: 1 }).addTo(map);
+
+      map.fitBounds(line.getBounds(), { padding: [30, 30] });
+      setTimeout(() => map.invalidateSize(), 50);
+    }, 50);
   },
 
   // ---- route memory: reuse past trips instead of retyping the KM ---------
@@ -502,8 +550,10 @@ export const Courier = {
         let actions = '';
         if (running && Auth.currentUser.email === log.user_email)
           actions += `<button class="btn btn-sm btn-primary" data-action="finish" data-id="${log.id}">Selesai</button>`;
-        if (Auth.isAdmin())
+        if (Auth.isAdmin()) {
+          actions += `<button class="btn btn-sm btn-secondary" data-action="track" data-id="${log.id}" title="Lihat rute GPS perjalanan ini">🛣️ Rute</button>`;
           actions += `<button class="btn btn-sm btn-secondary" data-action="edit" data-id="${log.id}">Edit</button>`;
+        }
         actions += `<button class="btn btn-sm btn-danger" data-action="delete" data-id="${log.id}">Hapus</button>`;
 
         return `

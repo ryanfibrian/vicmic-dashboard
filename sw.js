@@ -1,6 +1,6 @@
 // Vicmic Dashboard service worker — network-first for same-origin, with an
 // offline cache fallback. Bump CACHE_NAME on every deploy that changes assets.
-const CACHE_NAME = 'vicmic-dashboard-v103';
+const CACHE_NAME = 'vicmic-dashboard-v104';
 
 const PRECACHE = [
   './',
