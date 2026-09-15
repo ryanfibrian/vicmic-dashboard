@@ -5,16 +5,19 @@
 //
 // Flow: Google login via Supabase's redirect OAuth (opened in a system
 // Custom Tab, not this app's own WebView — Google blocks sign-in inside
-// embedded webviews) -> deep link back into the app -> exchange the code for
-// a session -> start/finish a trip -> background GPS ping while it runs.
+// embedded webviews) -> deep link back into the app -> pick origin and
+// destination on a map -> start/finish a trip -> background GPS ping while
+// it runs.
 //
-// Location picking (Gojek-style: tap a field, pick a point on a map or
-// search a place, distance auto-calculated) uses free/keyless public
-// services — no billing, but also no uptime guarantee, so every call here
-// degrades to "fill it in manually" on failure rather than blocking:
-//   - Leaflet + OpenStreetMap tiles: the map itself.
+// Free/keyless services behind the location features — all wrapped so a
+// failure degrades to "type it in manually" instead of blocking the trip:
+//   - Leaflet + CARTO Voyager basemap tiles: the maps.
 //   - Photon (photon.komoot.io): place search + reverse geocoding.
-//   - OSRM (router.project-osrm.org): driving-distance route calculation.
+//     NOTE: its public instance only accepts lang=default/de/en/fr — passing
+//     lang=id returns HTTP 400 with a JSON body, which silently looks like
+//     "no results" if you don't check res.ok.
+//   - OSRM (router.project-osrm.org): driving distance, duration, and the
+//     route geometry drawn on the preview map.
 // ============================================================================
 
 const { App, Browser, BackgroundGeolocation } = window.Capacitor?.Plugins || {};
@@ -23,30 +26,34 @@ const CFG = window.VICMIC_CONFIG;
 const PHOTON_SEARCH = 'https://photon.komoot.io/api/';
 const PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
 const OSRM_ROUTE = 'https://router.project-osrm.org/route/v1/driving/';
-const DEFAULT_MAP_CENTER = [-6.25, 106.7]; // Jabodetabek-ish; overridden once a point is picked
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const TILE_ATTR = '&copy; OpenStreetMap &copy; CARTO';
+const DEFAULT_CENTER = [-6.25, 106.7]; // Jabodetabek, until a real point exists
 
 const supabase = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false, // we hand the callback URL to Capacitor's deep-link event instead
+    detectSessionInUrl: false, // the callback URL arrives via Capacitor's deep-link event
     flowType: 'pkce',
   },
 });
 
 const state = {
-  user: null, // { email, role }
-  trip: null, // active courier_logs row, or null
+  user: null,
+  trip: null,
   watcherId: null,
   courierRate: CFG.DEFAULT_COURIER_RATE_PER_KM,
   lastPingAt: 0,
   timerInterval: null,
 
-  points: { from: null, to: null }, // { lat, lng, label } once picked via map/search/favorite
-  lastAutoKm: null,
+  points: { from: null, to: null }, // { lat, lng, label }
+  route: null, // { km, minutes, geometry }
+  manualKm: null, // set only when the courier overrides the calculated value
 
   picker: { target: null, map: null, center: null, address: '', searchResults: [] },
-  favTarget: null,
+  previewMap: null,
+  previewLayer: null,
   favorites: [],
   favError: null,
 };
@@ -80,12 +87,22 @@ function setError(msg) {
 
 function showBanner(msg) {
   const el = $('status-banner');
-  if (!msg) {
-    el.hidden = true;
-    return;
-  }
-  el.hidden = false;
-  el.textContent = msg;
+  el.hidden = !msg;
+  el.textContent = msg || '';
+}
+
+function setHint(msg, warn = false) {
+  const el = $('distance-hint');
+  el.textContent = msg || '';
+  el.classList.toggle('is-warn', !!warn);
+}
+
+function newMap(elId, opts = {}) {
+  const map = L.map(elId, { zoomControl: false, attributionControl: true, ...opts }).setView(DEFAULT_CENTER, 12);
+  // detectRetina swaps in the @2x tiles on high-DPI phone screens — without
+  // it the basemap looks noticeably soft/blurry on a modern device.
+  L.tileLayer(TILE_URL, { maxZoom: 20, detectRetina: true, attribution: TILE_ATTR }).addTo(map);
+  return map;
 }
 
 // ---- view switching ---------------------------------------------------
@@ -102,7 +119,7 @@ function showTrip() {
   $('user-email').textContent = state.user.email;
 }
 
-// ---- auth: Google login via Supabase redirect OAuth --------------------
+// ---- auth --------------------------------------------------------------
 
 async function handleGoogleLogin() {
   setError('');
@@ -129,7 +146,7 @@ async function handleDeepLink(url) {
     const errDesc = parsed.searchParams.get('error_description');
     await Browser.close().catch(() => {});
     if (errDesc) throw new Error(errDesc);
-    if (!code) return; // not an auth callback we care about
+    if (!code) return;
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
     await onAuthReady();
@@ -140,8 +157,6 @@ async function handleDeepLink(url) {
   }
 }
 
-// After a session exists (fresh login or app relaunch), verify the account
-// is a whitelisted courier and load whatever trip state applies.
 async function onAuthReady() {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData?.session;
@@ -167,6 +182,7 @@ async function onAuthReady() {
   };
   showTrip();
   await loadCourierRate();
+  loadFavorites();
   await loadState();
 }
 
@@ -177,8 +193,6 @@ async function logout() {
   state.trip = null;
   showLogin();
 }
-
-// ---- commission rate (mirrors PriceCalc.courierRatePerKm on the web) ---
 
 async function loadCourierRate() {
   const { data } = await supabase
@@ -208,7 +222,7 @@ async function loadState() {
   state.trip = data || null;
   if (state.trip) {
     renderActive();
-    startWatcher(state.trip.id); // idempotent: resumes tracking after an app relaunch
+    startWatcher(state.trip.id); // idempotent: resumes tracking after a relaunch
   } else {
     stopWatcher();
     renderStart();
@@ -239,13 +253,18 @@ function renderActive() {
   state.timerInterval = setInterval(tick, 1000);
 }
 
-async function startTrip() {
-  const from = $('f-from').value.trim();
-  const to = $('f-to').value.trim();
-  const km = parseDecimalId($('f-distance').value);
+function effectiveKm() {
+  if (state.manualKm != null) return state.manualKm;
+  return state.route ? state.route.km : null;
+}
 
-  if (!from || !to) return showBanner('Isi lokasi asal dan tujuan.');
-  if (isNaN(km) || km <= 0) return showBanner('Jarak KM tidak valid.');
+async function startTrip() {
+  const from = state.points.from;
+  const to = state.points.to;
+  const km = effectiveKm();
+
+  if (!from || !to) return showBanner('Pilih lokasi asal dan tujuan dulu.');
+  if (km == null || isNaN(km) || km <= 0) return showBanner('Jarak belum terisi. Isi manual kalau perhitungan otomatis gagal.');
 
   const btn = $('btn-start');
   btn.disabled = true;
@@ -258,8 +277,8 @@ async function startTrip() {
           user_email: state.user.email,
           date: now.toISOString().split('T')[0],
           time: now.toTimeString().substring(0, 5),
-          from_location: from,
-          to_location: to,
+          from_location: from.label,
+          to_location: to.label,
           distance_km: km,
           amount_rp: Math.round(km * state.courierRate),
           status: 'sedang jalan',
@@ -270,12 +289,7 @@ async function startTrip() {
       .maybeSingle();
     if (error) throw error;
 
-    $('f-from').value = '';
-    $('f-to').value = '';
-    $('f-distance').value = '';
-    delete $('f-distance').dataset.auto;
-    state.points = { from: null, to: null };
-    clearDistanceHint();
+    resetTripForm();
     state.trip = inserted;
     renderActive();
     startWatcher(inserted.id);
@@ -285,6 +299,18 @@ async function startTrip() {
   } finally {
     btn.disabled = false;
   }
+}
+
+function resetTripForm() {
+  state.points = { from: null, to: null };
+  state.route = null;
+  state.manualKm = null;
+  $('f-distance').value = '';
+  $('manual-km-wrap').hidden = true;
+  $('route-preview').hidden = true;
+  setHint('');
+  renderLegs();
+  renderDistance();
 }
 
 async function finishTrip() {
@@ -310,16 +336,15 @@ async function finishTrip() {
 
 // ---- background GPS ping --------------------------------------------------
 // @capacitor-community/background-geolocation runs a real Android foreground
-// service (persistent notification required by Android — this is expected,
-// not a bug) so updates keep flowing even with the screen locked / app
-// backgrounded, unlike a plain browser tab.
+// service (the persistent notification is required by Android — expected, not
+// a bug), so updates keep flowing with the screen locked.
 
 function startWatcher(tripId) {
   if (!BackgroundGeolocation) {
     showBanner('Plugin GPS tidak tersedia di build ini.');
     return;
   }
-  if (state.watcherId) return; // already running for this session
+  if (state.watcherId) return;
   state.lastPingAt = 0;
 
   BackgroundGeolocation.addWatcher(
@@ -328,7 +353,7 @@ function startWatcher(tripId) {
       backgroundMessage: 'Mengirim posisi perjalanan ke admin…',
       requestPermissions: true,
       stale: false,
-      distanceFilter: 30, // metres; paired with the time throttle below
+      distanceFilter: 30,
     },
     (location, error) => {
       if (error) {
@@ -373,99 +398,130 @@ async function pingPosition(tripId, location) {
   if (error) console.warn('pingPosition:', error.message);
 }
 
-// ---- location fields: invalidate the stored point on manual edit --------
-// A point (lat/lng) is only trustworthy as long as the text matches what was
-// picked. Once the courier types over it by hand, drop the point so a stale
-// coordinate doesn't silently feed into the distance calculation.
+// ---- legs + distance readout ---------------------------------------------
 
-function wireLocationField(inputId, target) {
-  $(inputId).addEventListener('input', () => {
-    state.points[target] = null;
-    clearDistanceHint();
-  });
-}
-
-// ---- distance auto-calc (OSRM) -------------------------------------------
-
-function clearDistanceHint() {
-  $('distance-hint').innerHTML = '';
-}
-
-async function recalcDistance() {
-  const { from, to } = state.points;
-  if (!from || !to) return;
-  const hintEl = $('distance-hint');
-  hintEl.textContent = 'Menghitung jarak…';
-  try {
-    const url = `${OSRM_ROUTE}${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.code !== 'Ok' || !json.routes?.length) throw new Error('Rute tidak ditemukan');
-
-    const km = Math.round((json.routes[0].distance / 1000) * 10) / 10;
-    state.lastAutoKm = km;
-    const kmText = formatKm(km);
-    const distEl = $('f-distance');
-    const isEmpty = !distEl.value.trim();
-    const isStaleAuto = distEl.dataset.auto === '1';
-
-    if (isEmpty || isStaleAuto) {
-      distEl.value = kmText;
-      distEl.dataset.auto = '1';
-      hintEl.innerHTML = `✓ Jarak dihitung otomatis: ${kmText} KM`;
-    } else {
-      hintEl.innerHTML = `Jarak rute: <strong>${kmText} KM</strong> · <button type="button" id="btn-use-auto-km" class="link-btn">pakai</button>`;
-    }
-  } catch (e) {
-    console.warn('recalcDistance:', e);
-    hintEl.textContent = 'Gagal hitung jarak otomatis — isi manual.';
+function renderLegs() {
+  for (const target of ['from', 'to']) {
+    const el = $(target === 'from' ? 'v-from' : 'v-to');
+    const p = state.points[target];
+    el.textContent = p ? p.label : target === 'from' ? 'Pilih lokasi asal' : 'Pilih lokasi tujuan';
+    el.classList.toggle('is-empty', !p);
   }
 }
 
-function applyAutoKm() {
-  if (state.lastAutoKm == null) return;
-  const distEl = $('f-distance');
-  distEl.value = formatKm(state.lastAutoKm);
-  distEl.dataset.auto = '1';
-  $('distance-hint').innerHTML = `✓ Jarak dihitung otomatis: ${formatKm(state.lastAutoKm)} KM`;
+function renderDistance() {
+  const km = effectiveKm();
+  $('distance-value').textContent = km == null ? '–' : `${formatKm(km)} KM`;
 }
 
-// ---- map picker: tap a field's 🗺️ button to open ------------------------
-// Gojek-style — a pin fixed at screen-center, the map pans underneath it,
-// and the address is reverse-geocoded whenever the map stops moving.
+// ---- route: distance, duration, and the line on the preview map ----------
+
+async function recalcRoute() {
+  const { from, to } = state.points;
+  if (!from || !to) return;
+
+  setHint('Menghitung rute…');
+  try {
+    const url = `${OSRM_ROUTE}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`OSRM ${res.status}`);
+    const json = await res.json();
+    if (json.code !== 'Ok' || !json.routes?.length) throw new Error('Rute tidak ditemukan');
+
+    const r = json.routes[0];
+    state.route = {
+      km: Math.round((r.distance / 1000) * 10) / 10,
+      minutes: Math.round(r.duration / 60),
+      geometry: r.geometry,
+    };
+    state.manualKm = null; // a fresh route supersedes an earlier manual value
+    $('f-distance').value = '';
+    $('manual-km-wrap').hidden = true;
+
+    renderDistance();
+    drawRoutePreview();
+    setHint('Jarak & waktu dihitung otomatis dari rute jalan.');
+  } catch (e) {
+    console.warn('recalcRoute:', e);
+    state.route = null;
+    $('route-preview').hidden = true;
+    renderDistance();
+    setHint('Gagal hitung rute otomatis — isi jarak manual di bawah.', true);
+    $('manual-km-wrap').hidden = false;
+  }
+}
+
+function drawRoutePreview() {
+  if (!state.route?.geometry) return;
+  const wrap = $('route-preview');
+  wrap.hidden = false;
+
+  if (!state.previewMap) {
+    state.previewMap = newMap('route-map', {
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      boxZoom: false,
+      keyboard: false,
+    });
+  }
+  const map = state.previewMap;
+  setTimeout(() => map.invalidateSize(), 50);
+
+  if (state.previewLayer) state.previewLayer.remove();
+
+  const latlngs = state.route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+  const line = L.polyline(latlngs, { color: '#16a34a', weight: 5, opacity: 0.9, lineJoin: 'round' });
+  const start = L.circleMarker(latlngs[0], { radius: 6, color: '#fff', weight: 3, fillColor: '#16a34a', fillOpacity: 1 });
+  const end = L.circleMarker(latlngs[latlngs.length - 1], { radius: 6, color: '#fff', weight: 3, fillColor: '#dc2626', fillOpacity: 1 });
+
+  state.previewLayer = L.layerGroup([line, start, end]).addTo(map);
+  setTimeout(() => map.fitBounds(line.getBounds(), { padding: [26, 26] }), 60);
+
+  $('route-km').textContent = `${formatKm(state.route.km)} KM`;
+  $('route-eta').textContent = `± ${state.route.minutes} menit`;
+}
+
+function toggleManualKm() {
+  const wrap = $('manual-km-wrap');
+  wrap.hidden = !wrap.hidden;
+  if (!wrap.hidden) $('f-distance').focus();
+}
+
+function onManualKmInput() {
+  const v = parseDecimalId($('f-distance').value);
+  state.manualKm = isNaN(v) || v <= 0 ? null : v;
+  renderDistance();
+  if (state.manualKm != null) setHint('Jarak diisi manual.');
+}
+
+// ---- map picker ----------------------------------------------------------
 
 function ensurePickerMap() {
   if (state.picker.map) return;
-  state.picker.map = L.map('mappicker-map', { zoomControl: true }).setView(DEFAULT_MAP_CENTER, 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(state.picker.map);
+  state.picker.map = newMap('mappicker-map');
   state.picker.map.on('moveend', () => reverseGeocodeCenter());
 }
 
 function openMapPicker(target) {
   state.picker.target = target;
-  $('mappicker-title').textContent = target === 'from' ? 'Lokasi Asal' : 'Lokasi Tujuan';
+  $('mp-sheet-label').textContent = target === 'from' ? 'Lokasi Asal' : 'Lokasi Tujuan';
   $('mp-search').value = '';
   hideSearchResults();
   $('view-mappicker').hidden = false;
+  renderFavChips();
 
   ensurePickerMap();
-  setTimeout(() => state.picker.map.invalidateSize(), 50);
+  setTimeout(() => state.picker.map.invalidateSize(), 60);
 
   const existing = state.points[target];
   if (existing) {
     state.picker.center = { lat: existing.lat, lng: existing.lng };
     setPickerAddress(existing.label);
     state.picker.map.setView([existing.lat, existing.lng], 16);
-  } else if (target === 'from' && navigator.geolocation) {
-    setPickerAddress('Mencari lokasi Anda…');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => state.picker.map.setView([pos.coords.latitude, pos.coords.longitude], 16),
-      () => reverseGeocodeCenter(),
-      { timeout: 6000 }
-    );
+  } else if (target === 'from') {
+    locateMe(); // origin defaults to where the courier is standing
   } else {
     reverseGeocodeCenter();
   }
@@ -480,9 +536,9 @@ function confirmMapPicker() {
   const target = state.picker.target;
   if (!target || !state.picker.center) return;
   state.points[target] = { ...state.picker.center, label: state.picker.address };
-  $(target === 'from' ? 'f-from' : 'f-to').value = state.picker.address;
   closeMapPicker();
-  recalcDistance();
+  renderLegs();
+  recalcRoute();
 }
 
 function setPickerAddress(text) {
@@ -490,23 +546,30 @@ function setPickerAddress(text) {
   $('mp-address').textContent = text;
 }
 
+function locateMe() {
+  if (!navigator.geolocation) return reverseGeocodeCenter();
+  setPickerAddress('Mencari lokasi Anda…');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => state.picker.map.setView([pos.coords.latitude, pos.coords.longitude], 16),
+    () => reverseGeocodeCenter(),
+    { timeout: 8000, enableHighAccuracy: true }
+  );
+}
+
 async function reverseGeocodeCenter() {
   const map = state.picker.map;
+  if (!map) return;
   const c = map.getCenter();
   state.picker.center = { lat: c.lat, lng: c.lng };
   setPickerAddress('Mencari alamat…');
   try {
-    // Photon's public instance only supports lang=default/de/en/fr — "id" is
-    // rejected with a 400, so leave it unset (it still returns local names).
-    const url = `${PHOTON_REVERSE}?lon=${c.lng}&lat=${c.lat}`;
-    const res = await fetch(url);
+    const res = await fetch(`${PHOTON_REVERSE}?lon=${c.lng}&lat=${c.lat}`);
     if (!res.ok) throw new Error(`Photon reverse ${res.status}`);
     const json = await res.json();
-    const label = formatPhotonFeature(json.features?.[0]) || `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
-    setPickerAddress(label);
+    setPickerAddress(formatPhotonFeature(json.features?.[0]) || `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`);
   } catch (e) {
     console.warn('reverseGeocodeCenter:', e);
-    setPickerAddress(`${c.lat.toFixed(5)}, ${c.lng.toFixed(5)} (nama alamat tidak tersedia)`);
+    setPickerAddress(`${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`);
   }
 }
 
@@ -516,14 +579,14 @@ function formatPhotonFeature(f) {
   return [p.name, p.street, p.district || p.city, p.state].filter(Boolean).join(', ');
 }
 
-// ---- place search (Photon) ------------------------------------------------
+// ---- place search --------------------------------------------------------
 
 let searchDebounce;
 function onSearchInput(e) {
   clearTimeout(searchDebounce);
   const q = e.target.value.trim();
   if (q.length < 3) return hideSearchResults();
-  searchDebounce = setTimeout(() => runSearch(q), 400);
+  searchDebounce = setTimeout(() => runSearch(q), 350);
 }
 
 async function runSearch(q) {
@@ -531,8 +594,9 @@ async function runSearch(q) {
   el.innerHTML = '<div class="mp-search-result muted">Mencari…</div>';
   el.hidden = false;
   try {
-    const url = `${PHOTON_SEARCH}?q=${encodeURIComponent(q)}&limit=6`;
-    const res = await fetch(url);
+    const center = state.picker.map?.getCenter();
+    const bias = center ? `&lat=${center.lat}&lon=${center.lng}` : '';
+    const res = await fetch(`${PHOTON_SEARCH}?q=${encodeURIComponent(q)}&limit=6${bias}`);
     if (!res.ok) throw new Error(`Photon search ${res.status}`);
     const json = await res.json();
     state.picker.searchResults = json.features || [];
@@ -546,15 +610,14 @@ async function runSearch(q) {
 function renderSearchResults() {
   const el = $('mp-search-results');
   const results = state.picker.searchResults || [];
+  el.hidden = false;
   if (!results.length) {
     el.innerHTML = '<div class="mp-search-result muted">Tidak ditemukan.</div>';
-    el.hidden = false;
     return;
   }
   el.innerHTML = results
     .map((f, i) => `<div class="mp-search-result" data-idx="${i}">${escapeHtml(formatPhotonFeature(f) || 'Lokasi')}</div>`)
     .join('');
-  el.hidden = false;
 }
 
 function hideSearchResults() {
@@ -565,26 +628,12 @@ function selectSearchResult(feature) {
   if (!feature) return;
   hideSearchResults();
   $('mp-search').value = '';
+  $('mp-search').blur();
   const [lng, lat] = feature.geometry.coordinates;
-  state.picker.map.setView([lat, lng], 16); // moveend fires reverseGeocodeCenter
+  state.picker.map.setView([lat, lng], 17); // moveend triggers reverse geocoding
 }
 
-// ---- favorites: a separate saved-address list, not tied to history ------
-
-async function openFavorites(target) {
-  state.favTarget = target;
-  state.favError = null;
-  $('fav-modal').hidden = false;
-  $('btn-fav-save-current').hidden = !state.points[target];
-  $('fav-list').innerHTML = '<p class="fav-empty">Memuat…</p>';
-  await loadFavorites();
-  renderFavorites();
-}
-
-function closeFavorites() {
-  $('fav-modal').hidden = true;
-  state.favTarget = null;
-}
+// ---- favorites (saved places, shown as chips inside the picker) ----------
 
 async function loadFavorites() {
   const { data, error } = await supabase
@@ -596,72 +645,65 @@ async function loadFavorites() {
     console.warn('loadFavorites:', error.message);
     state.favorites = [];
     state.favError = error.message;
-    return;
+  } else {
+    state.favorites = data || [];
+    state.favError = null;
   }
-  state.favError = null;
-  state.favorites = data || [];
+  renderFavChips();
 }
 
-function renderFavorites() {
-  const el = $('fav-list');
-
-  if (state.favError) {
-    el.innerHTML = `<p class="fav-empty">Gagal memuat: ${escapeHtml(state.favError)}</p>`;
-    return;
+function renderFavChips() {
+  const el = $('mp-chips');
+  if (!el) return;
+  const chips = [
+    `<button type="button" class="mp-chip is-primary" data-locate="1">Lokasi saya</button>`,
+  ];
+  for (const f of state.favorites) {
+    chips.push(
+      `<span class="mp-chip" data-fav="${f.id}">
+         <span class="mp-chip-text">${escapeHtml(f.address)}</span>
+         <button type="button" class="mp-chip-del" data-favdel="${f.id}" aria-label="Hapus">&times;</button>
+       </span>`
+    );
   }
-
   if (!state.favorites.length) {
-    // Explain *why* the save button below might not be visible either —
-    // without this, an empty sheet with no save button looks broken rather
-    // than "pick a location first".
-    el.innerHTML = state.points[state.favTarget]
-      ? '<p class="fav-empty">Belum ada alamat favorit. Simpan lokasi yang sudah dipilih lewat tombol di bawah.</p>'
-      : '<p class="fav-empty">Belum ada alamat favorit.<br>Pilih lokasi dulu lewat 🗺️, baru bisa disimpan ke sini.</p>';
-    return;
+    chips.push(`<span class="mp-chips-empty">Simpan lokasi biar tidak cari ulang →</span>`);
   }
-
-  el.innerHTML = state.favorites
-    .map(
-      (f) => `
-      <div class="fav-item" data-id="${f.id}">
-        <span class="fav-item-text">${escapeHtml(f.address)}</span>
-        <button type="button" class="fav-item-del" data-del="${f.id}">🗑️</button>
-      </div>`
-    )
-    .join('');
+  el.innerHTML = chips.join('');
 }
 
-function useFavorite(fav) {
-  const target = state.favTarget;
-  if (!target || !fav) return;
-  state.points[target] = { lat: fav.lat, lng: fav.lng, label: fav.address };
-  $(target === 'from' ? 'f-from' : 'f-to').value = fav.address;
-  closeFavorites();
-  recalcDistance();
+function useFavorite(id) {
+  const fav = state.favorites.find((f) => String(f.id) === String(id));
+  if (!fav || !state.picker.map) return;
+  setPickerAddress(fav.address);
+  state.picker.center = { lat: fav.lat, lng: fav.lng };
+  state.picker.map.setView([fav.lat, fav.lng], 17);
 }
 
-async function saveFavoriteFromField() {
-  const target = state.favTarget;
-  const point = state.points[target];
-  if (!point) return;
+async function saveFavorite() {
+  if (!state.picker.center || !state.picker.address) return;
+  const btn = $('btn-fav-save');
+  btn.disabled = true;
   const { error } = await supabase.from('courier_favorite_addresses').insert({
     user_email: state.user.email,
-    address: point.label,
-    lat: point.lat,
-    lng: point.lng,
+    address: state.picker.address,
+    lat: state.picker.center.lat,
+    lng: state.picker.center.lng,
   });
-  if (error) return showBanner('Gagal simpan favorit: ' + error.message);
-  $('btn-fav-save-current').hidden = true;
+  btn.disabled = false;
+  if (error) {
+    console.warn('saveFavorite:', error.message);
+    setPickerAddress(state.picker.address + ' — gagal disimpan');
+    return;
+  }
   await loadFavorites();
-  renderFavorites();
 }
 
 async function deleteFavorite(id) {
   const { error } = await supabase.from('courier_favorite_addresses').delete().eq('id', id);
-  if (!error) {
-    state.favorites = state.favorites.filter((f) => f.id !== id);
-    renderFavorites();
-  }
+  if (error) return console.warn('deleteFavorite:', error.message);
+  state.favorites = state.favorites.filter((f) => String(f.id) !== String(id));
+  renderFavChips();
 }
 
 // ---- wiring ---------------------------------------------------------------
@@ -672,57 +714,52 @@ function init() {
   $('btn-start').addEventListener('click', startTrip);
   $('btn-finish').addEventListener('click', finishTrip);
 
-  wireLocationField('f-from', 'from');
-  wireLocationField('f-to', 'to');
-  $('f-distance').addEventListener('input', () => delete $('f-distance').dataset.auto);
-  $('distance-hint').addEventListener('click', (e) => {
-    if (e.target.id === 'btn-use-auto-km') applyAutoKm();
-  });
+  document.querySelectorAll('[data-pick]').forEach((el) =>
+    el.addEventListener('click', () => openMapPicker(el.dataset.pick))
+  );
 
-  document.querySelectorAll('[data-pick]').forEach((btn) => btn.addEventListener('click', () => openMapPicker(btn.dataset.pick)));
-  document.querySelectorAll('[data-fav]').forEach((btn) => btn.addEventListener('click', () => openFavorites(btn.dataset.fav)));
+  $('btn-manual-km').addEventListener('click', toggleManualKm);
+  $('f-distance').addEventListener('input', onManualKmInput);
 
   $('btn-mappicker-cancel').addEventListener('click', closeMapPicker);
   $('btn-mappicker-confirm').addEventListener('click', confirmMapPicker);
+  $('btn-mp-locate').addEventListener('click', locateMe);
+  $('btn-fav-save').addEventListener('click', saveFavorite);
+
   $('mp-search').addEventListener('input', onSearchInput);
   $('mp-search-results').addEventListener('click', (e) => {
     const item = e.target.closest('[data-idx]');
     if (item) selectSearchResult(state.picker.searchResults[Number(item.dataset.idx)]);
   });
 
-  $('btn-fav-close').addEventListener('click', closeFavorites);
-  $('btn-fav-save-current').addEventListener('click', saveFavoriteFromField);
-  $('fav-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'fav-modal') closeFavorites();
-  });
-  $('fav-list').addEventListener('click', (e) => {
-    const delBtn = e.target.closest('[data-del]');
-    if (delBtn) {
+  $('mp-chips').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-favdel]');
+    if (del) {
       e.stopPropagation();
-      deleteFavorite(Number(delBtn.dataset.del));
+      deleteFavorite(del.dataset.favdel);
       return;
     }
-    const item = e.target.closest('.fav-item');
-    if (item) useFavorite(state.favorites.find((f) => String(f.id) === item.dataset.id));
+    if (e.target.closest('[data-locate]')) return locateMe();
+    const fav = e.target.closest('[data-fav]');
+    if (fav) useFavorite(fav.dataset.fav);
   });
 
   App?.addListener('appUrlOpen', ({ url }) => handleDeepLink(url));
 
-  // Resume tracking / trip state whenever the app comes back to the
-  // foreground (e.g. reopened after Android killed the process).
   App?.addListener('resume', () => {
     if (state.user) loadState();
   });
 
-  // Registering this listener suppresses Android's default back-button
-  // behaviour, so we own it: close whichever overlay is open, else exit.
+  // Registering this listener suppresses Android's default back behaviour,
+  // so we own it: close whatever overlay is open, else exit.
   App?.addListener('backButton', () => {
     if (!$('mp-search-results').hidden) return hideSearchResults();
     if (!$('view-mappicker').hidden) return closeMapPicker();
-    if (!$('fav-modal').hidden) return closeFavorites();
     App.exitApp();
   });
 
+  renderLegs();
+  renderDistance();
   onAuthReady();
 }
 

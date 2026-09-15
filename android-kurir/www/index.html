@@ -11,8 +11,9 @@
 
   <div id="view-login" class="view">
     <div class="login-card">
-      <h1>🚚 Vicmic Kurir</h1>
-      <p class="muted small">Login dengan akun Google yang sudah terdaftar sebagai kurir di Vicmic Dashboard.</p>
+      <div class="login-logo">🚚</div>
+      <h1>Vicmic Kurir</h1>
+      <p class="muted small">Masuk dengan akun Google yang terdaftar sebagai kurir.</p>
       <button id="btn-google-login" class="btn btn-primary btn-block">Masuk dengan Google</button>
       <p id="login-error" class="error-text"></p>
     </div>
@@ -20,9 +21,9 @@
 
   <div id="view-trip" class="view" hidden>
     <header class="topbar">
-      <div>
+      <div class="topbar-user">
         <strong id="user-name">–</strong>
-        <div class="muted small" id="user-email">–</div>
+        <span class="muted small" id="user-email">–</span>
       </div>
       <button id="btn-logout" class="btn btn-ghost btn-sm">Keluar</button>
     </header>
@@ -30,74 +31,102 @@
     <main class="content">
       <div id="status-banner" class="status-banner" hidden></div>
 
-      <div id="card-start" class="card" hidden>
-        <h2>📝 Mulai Perjalanan</h2>
-        <div class="field">
-          <label for="f-from">Lokasi Asal</label>
-          <div class="loc-row">
-            <input type="text" id="f-from" placeholder="Ketik lokasi asal…" autocomplete="off">
-            <button type="button" class="btn-icon-sm" data-pick="from" title="Pilih di peta">🗺️</button>
-            <button type="button" class="btn-icon-sm" data-fav="from" title="Alamat favorit">⭐</button>
-          </div>
-        </div>
-        <div class="field">
-          <label for="f-to">Lokasi Tujuan</label>
-          <div class="loc-row">
-            <input type="text" id="f-to" placeholder="Ketik lokasi tujuan…" autocomplete="off">
-            <button type="button" class="btn-icon-sm" data-pick="to" title="Pilih di peta">🗺️</button>
-            <button type="button" class="btn-icon-sm" data-fav="to" title="Alamat favorit">⭐</button>
-          </div>
-        </div>
-        <div class="field">
-          <label for="f-distance">Jarak (KM)</label>
-          <input type="text" inputmode="decimal" id="f-distance" placeholder="Contoh: 5.5 atau 5,5" autocomplete="off">
-          <p class="route-hint" id="distance-hint"></p>
-        </div>
-        <button id="btn-start" class="btn btn-primary btn-block">🚀 Mulai Jalan</button>
-      </div>
+      <section id="card-start" class="card" hidden>
+        <h2 class="card-title">Mulai Perjalanan</h2>
 
-      <div id="card-active" class="card" hidden>
-        <h2>🛵 Sedang Jalan</h2>
-        <p><span class="muted">Dari</span> — <strong id="active-from"></strong></p>
-        <p><span class="muted">Ke</span> — <strong id="active-to"></strong></p>
-        <p><span class="muted">Jarak</span> — <strong id="active-km"></strong> KM</p>
-        <div class="mono" id="active-timer">00:00:00</div>
-        <p class="gps-indicator" id="gps-indicator">📍 GPS aktif — posisi terkirim ke admin tiap ±15 detik</p>
-        <button id="btn-finish" class="btn btn-danger btn-block">✅ Selesai</button>
-      </div>
+        <div class="journey">
+          <button type="button" class="journey-row" data-pick="from">
+            <span class="journey-mark"><span class="mark-dot"></span></span>
+            <span class="journey-text">
+              <span class="journey-label">Lokasi Asal</span>
+              <span class="journey-value is-empty" id="v-from">Pilih lokasi asal</span>
+            </span>
+            <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+
+          <span class="journey-line" aria-hidden="true"></span>
+
+          <button type="button" class="journey-row" data-pick="to">
+            <span class="journey-mark"><span class="mark-sq"></span></span>
+            <span class="journey-text">
+              <span class="journey-label">Lokasi Tujuan</span>
+              <span class="journey-value is-empty" id="v-to">Pilih lokasi tujuan</span>
+            </span>
+            <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+
+        <div id="route-preview" class="route-preview" hidden>
+          <div id="route-map" class="route-map"></div>
+          <div class="route-stats">
+            <span class="route-km" id="route-km">–</span>
+            <span class="route-sep">·</span>
+            <span class="route-eta" id="route-eta">–</span>
+          </div>
+        </div>
+
+        <div class="distance-row">
+          <span class="distance-label">Jarak dipakai</span>
+          <span class="distance-value" id="distance-value">–</span>
+          <button type="button" id="btn-manual-km" class="link-btn">ubah manual</button>
+        </div>
+        <div id="manual-km-wrap" class="manual-km" hidden>
+          <input type="text" inputmode="decimal" id="f-distance" placeholder="Contoh: 5,5" autocomplete="off">
+        </div>
+        <p class="route-hint" id="distance-hint"></p>
+
+        <button id="btn-start" class="btn btn-primary btn-block btn-lg">Mulai Jalan</button>
+      </section>
+
+      <section id="card-active" class="card" hidden>
+        <h2 class="card-title">Sedang Jalan</h2>
+        <div class="active-route">
+          <div class="active-leg"><span class="mark-dot"></span><span id="active-from"></span></div>
+          <span class="journey-line short" aria-hidden="true"></span>
+          <div class="active-leg"><span class="mark-sq"></span><span id="active-to"></span></div>
+        </div>
+        <div class="timer" id="active-timer">00:00:00</div>
+        <div class="active-meta"><span id="active-km"></span> KM</div>
+        <p class="gps-indicator" id="gps-indicator">GPS aktif — posisi terkirim ke admin tiap ±15 detik</p>
+        <button id="btn-finish" class="btn btn-danger btn-block btn-lg">Selesai</button>
+      </section>
     </main>
   </div>
 
-  <!-- Full-screen map picker: tap a "🗺️" button on Lokasi Asal/Tujuan to open. -->
+  <!-- Full-screen location picker: search, saved places, and a map. -->
   <div id="view-mappicker" class="view" hidden>
-    <header class="topbar">
-      <button type="button" id="btn-mappicker-cancel" class="btn btn-ghost btn-sm">✕ Batal</button>
-      <strong id="mappicker-title">Pilih Lokasi</strong>
-      <span style="width:52px"></span>
+    <header class="mp-top">
+      <button type="button" id="btn-mappicker-cancel" class="icon-btn" aria-label="Kembali">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div class="mp-search-wrap">
+        <svg class="mp-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="text" id="mp-search" class="mp-search-input" placeholder="Cari alamat atau tempat…" autocomplete="off">
+        <div id="mp-search-results" class="mp-search-results" hidden></div>
+      </div>
     </header>
-    <div class="mp-search-wrap">
-      <input type="text" id="mp-search" class="mp-search-input" placeholder="Cari nama tempat / alamat…" autocomplete="off">
-      <div id="mp-search-results" class="mp-search-results" hidden></div>
-    </div>
+
+    <div id="mp-chips" class="mp-chips"></div>
+
     <div class="mp-map-wrap">
       <div id="mappicker-map" class="mp-map"></div>
-      <div class="mp-center-pin" aria-hidden="true"><span class="pin-dot"></span><span class="pin-stick"></span></div>
-    </div>
-    <div class="mp-bottom">
-      <p class="mp-address" id="mp-address">Geser peta untuk pilih titik…</p>
-      <button type="button" id="btn-mappicker-confirm" class="btn btn-primary btn-block">Gunakan Lokasi Ini</button>
-    </div>
-  </div>
-
-  <!-- Favorites bottom sheet: tap a "⭐" button to open. -->
-  <div id="fav-modal" class="modal-overlay" hidden>
-    <div class="modal-sheet">
-      <div class="modal-sheet-header">
-        <strong>⭐ Alamat Favorit</strong>
-        <button type="button" id="btn-fav-close" class="btn-icon-sm">✕</button>
+      <div class="mp-center-pin" aria-hidden="true">
+        <span class="pin-head"></span>
+        <span class="pin-stick"></span>
+        <span class="pin-shadow"></span>
       </div>
-      <div id="fav-list" class="fav-list"></div>
-      <button type="button" id="btn-fav-save-current" class="btn btn-secondary btn-block" hidden>💾 Simpan lokasi field ini sebagai favorit</button>
+      <button type="button" id="btn-mp-locate" class="mp-fab" aria-label="Ke lokasi saya">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </button>
+    </div>
+
+    <div class="mp-sheet">
+      <span class="mp-sheet-label" id="mp-sheet-label">Lokasi Asal</span>
+      <p class="mp-address" id="mp-address">Geser peta untuk memilih titik…</p>
+      <div class="mp-sheet-actions">
+        <button type="button" id="btn-fav-save" class="btn btn-secondary">Simpan</button>
+        <button type="button" id="btn-mappicker-confirm" class="btn btn-primary">Gunakan Lokasi Ini</button>
+      </div>
     </div>
   </div>
 
